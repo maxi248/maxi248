@@ -154,12 +154,24 @@ class Spiel(arcade.Window):
         self.Kamera.use()
         self.szene.draw()
 
+        # Deaktiviere vorübergehend die Kamera, um HUD-Elemente relativ zum Fenster zu zeichnen
+        self.Kamera.use_fixed()
+
+        # Bestimme den aktuellen Punktestand und wähle das entsprechende Bild
         punktestand_index = min(self.punktestand, len(self.punktestand_liste) - 1)
         aktuelles_bild = self.punktestand_liste[punktestand_index]
 
-        bild_position_x = self.width - aktuelles_bild.width - 20 
-        bild_position_y = self.height - aktuelles_bild.height - 20  
-        arcade.draw_texture_rectangle(bild_position_x, bild_position_y, aktuelles_bild.width, aktuelles_bild.height, aktuelles_bild)
+        # Berechne die Position für das Punktestandbild basierend auf der Fenstergröße
+        bild_position_x = self.width - aktuelles_bild.width - 20  # 20 Pixel Abstand vom rechten Rand
+        bild_position_y = self.height - aktuelles_bild.height - 20  # 20 Pixel Abstand vom oberen Rand
+
+        # Zeichne das Bild für den Punktestand
+        arcade.draw_texture_rectangle(bild_position_x, bild_position_y, aktuelles_bild.width, aktuelles_bild.height, aktuelles_bild, alpha=255)
+
+        # Stelle die ursprüngliche Kameraperspektive wieder her
+        self.Kamera.use()
+
+
 
 spiel = Spiel()
 arcade.run()
