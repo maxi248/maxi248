@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Quiz</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #1a1a1a;
+            color: aliceblue;
+            background-image: url("1.jpeg");
+            background-size: 2000px;
+        }
+
+        #frage {
+            font-size: 2.5vw;
+        }
+
+        button {
+            font-size: 1.5vw;
+            background-color: #3333ff;
+            border: none;
+            color: aliceblue;
+            padding: 1vw 3vw;
+            border-radius: 1vw;
+            margin: 1vw;
+            transition: background-color 0.3s; 
+        }
+
+        a {
+            font-size: 3vw;
+            color: aliceblue;
+            text-decoration: none;
+            background-color: #3333ff;
+            padding: 10px 30px;
+            border-radius: 40px;
+        }
+
+        a:hover {
+            font-size: 3vw;
+            background-color: #3333ff;
+            padding-left: 3.05vw;
+            padding-top: 1.05vw;
+            padding-right: 3.05vw;
+            padding-bottom: 1.05vw;
+        }
+
+        .richtig {
+            background-color: green !important; 
+        }
+
+        .falsch {
+            background-color: red !important; 
+        }
+        .btn-group {
+            display: inline-block;
+        }
+
+        .btn-group button {
+            display: inline-block;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="btn-group">
+        <button onclick="restartQuiz()">Restart</button>
+        <button onclick="goToStartPage()">Zurück</button>
+    </div>
+
+
+<div class="frage-container">
+    <p id="frage"></p>
+    <p>
+        <button id="antwort0a" onclick="auswertung(this.id)">Washington DC</button>
+        <button id="antwort1a" onclick="auswertung(this.id)">Los Angeles</button>
+        <button id="antwort2a" onclick="auswertung(this.id)">New York</button>
+        <button id="antwort3a" onclick="auswertung(this.id)">Boston</button>
+    </p>
+</div>
+
+<script>
+    fragenliste = ["Wie heißt die Hauptstadt von den USA?", "Wie heißt die Hauptstadt von Brasilien?", "Was ist die Hauptstadt von England?", "Was ist die Hauptstadt von Ägypten?", "Was ist die Hauptstadt von Kanada?", "Was ist die Hauptstadt von Indien?", "Was ist die Hauptstadt von Frankreich?", "Was ist die Hauptstadt von Peru?", "Was ist die Hauptstadt von Uruguay?", "Was ist die Hauptstadt von Deutschland?"];
+    antwortanliste = [["Washington DC", "Los Angeles", "New York", "Boston"], ["Rio de Janeiro", "Brasília", "São Paulo", "Salvador"], ["Norwich", "Luton", "London", "York"], ["Alexandria", "Kairo", "Luxor", "Assuan"], ["Toronto", "Branford", "Vancouver", "Ottawa"], ["Chennai", "Bangalore", "Neu-Delhi", "Mumbai"], ["Nizza", "Paris", "Cean", "Straßburg"], ["Cusco", "Lima", "Arequipa", "Puno"], ["Salto", "Rivera", "Montevideo", "Paysandú"], ["München", "Berlin", "Frankfurt", "Köln"]];
+    richtigeAntwortenListe = [0, 1, 2, 1, 3, 2, 1, 1, 2, 1];
+
+    fragenindex = 0;
+    richtigeAntworten = 0;
+
+    function auswertung(id) {        
+        var button = document.getElementById(id);
+        deaktiviereButtons(); 
+        var istRichtig = id === "antwort" + richtigeAntwortenListe[fragenindex] + "a";
+        
+
+            
+        if (istRichtig) {
+            richtigeAntworten++;
+            button.classList.add("richtig");
+        } else {
+            button.classList.add("falsch");
+            document.getElementById("antwort" + richtigeAntwortenListe[fragenindex] + "a").classList.add("richtig");
+        }
+
+
+        setTimeout(function () {
+            button.classList.remove(istRichtig ? "richtig" : "falsch");
+            if (!istRichtig) {
+                document.getElementById("antwort" + richtigeAntwortenListe[fragenindex] + "a").classList.remove("richtig");
+            }
+            weiter();
+            aktiviereButtons(); 
+        }, 2000); 
+    }
+
+    function deaktiviereButtons() {
+        for (var i = 0; i < 4; i++) {
+            document.getElementById("antwort" + i + "a").classList.add("disabled");
+        }
+    }
+
+    function aktiviereButtons() {
+        for (var i = 0; i < 4; i++) {
+            document.getElementById("antwort" + i + "a").classList.remove("disabled");
+        }
+    }
+
+    function weiter() {
+        fragenindex += 1;
+        if (fragenindex < fragenliste.length) {
+            document.getElementById("frage").innerHTML = fragenliste[fragenindex];
+            for (var i = 0; i < 4; i++) {
+                document.getElementById("antwort" + i + "a").innerHTML = antwortanliste[fragenindex][i];
+            }
+        } else {
+            document.getElementById("frage").innerHTML = "Du hast " + richtigeAntworten + " von " + fragenliste.length + " Punkten erreicht!";
+            document.getElementById("antwort0a").style.display = "none" 
+            document.getElementById("antwort1a").style.display = "none" 
+            document.getElementById("antwort2a").style.display = "none" 
+            document.getElementById("antwort3a").style.display = "none" 
+        }
+    }
+
+
+   
+    document.getElementById("frage").innerHTML = fragenliste[fragenindex];
+    for (var i = 0; i < 4; i++) {
+        document.getElementById("antwort" + i + "a").innerHTML = antwortanliste[fragenindex][i];
+    }
+    function goToStartPage(){
+        window.location.href = "Start.html";
+    }
+    function restartQuiz(){
+        window.location.href = "WissenschaftundTech.html";
+    }
+
+</script>
+</body>
+</html>

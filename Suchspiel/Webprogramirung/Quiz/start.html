@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta chartset="utf-8" , name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start</title>
+    <style>
+        body {
+            text-align: center;
+            background-color: #1a1a1a;
+            color: aliceblue;
+            background-image: url("2.jpg");
+            background-size: 2000px;
+            position: relative;
+        }
+
+        h1 {
+            padding-top: 40vh;
+            font-size: 4vw;
+        }
+
+        a {
+            font-size: 3vw;
+            color: aliceblue;
+            text-decoration: none;
+            background-color: blueviolet;
+            padding: 10px 30px;
+            border-radius: 40px;
+        }
+
+        p {
+            font-size: 1.5vw;
+            border: none;
+            color: aliceblue;
+            padding-left: 2.5vw;
+            padding-top: 1vw;
+            padding-right: 2.5vw;
+            padding-bottom: 1vw;
+            border-radius: 1vw;
+            margin-left: 1vw;
+            margin-right: 1vw;
+
+            
+        }
+
+        image {
+            font-size: 1.5vw;
+            border-radius: 1vw;
+            opacity: 0.5;
+
+        }
+
+        a:hover {
+            background-color: aqua;
+            transition-duration: 0.3s;
+            padding: 20px 60px;
+            font-size: 80px;
+        }
+
+        span#Bewertung label {
+            line-height: 45px;
+            cursor: Pointer;
+
+        }
+
+        span#Bewertung input[type="radio"] {
+            font-size: 20;
+
+        }
+
+        p.sternebewertung {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-55%, -300%)
+        }
+
+        p.sternebewertung:not(:checked)>input {
+            display: None;
+
+        }
+
+        p.sternebewertung:not(:checked)>label {
+            float: right;
+            width: 1em;
+            padding: 0 .1em;
+            overflow: Hidden;
+            white-space: Nowrap;
+            cursor: Pointer;
+            font-size: 200%;
+            line-height: 1.2;
+            color: #D0D0D0;
+            text-shadow: 1px 1px #B0B0B0, 2px 2px #606060, .1em .1em .2em rgba(0, 0, 0, .5);
+            transition: all .5s;
+
+
+        }
+
+        p.sternebewertung:not(:checked)>label::before {
+            content: '★ ';
+
+        }
+
+        p.sternebewertung>input:checked~label {
+            color: #FFD700;
+            text-shadow: 1px 1px #C06000, 2px 2px #904000, .1em .1em .2em rgba(0, 0, 0, .5);
+            filter: drop-shadow(0px 0px 3px #FFD700);
+            animation: twinkle 1s ease-in-out infinite alternate;
+            text-align: middle;
+        }
+
+        p.sternebewertung:not(:checked)>label:hover,
+        p.sternebewertung:not(:checked)>label:hover~label {
+            color: #FECF41;
+            text-shadow: 1px 1px #F29E02, 2px 2px #B57340, .1em .1em .2em rgba(0, 0, 0, .5);
+            filter: drop-shadow(0px 0px 2px #FFD700);
+
+        }
+
+        p.sternebewertung>input:checked~label:hover~label,
+        p.sternebewertung>label:hover~input:checked~label {
+            color: #FBB600;
+            text-shadow: 1px 1px #F8BA01, 2px 2px #B57340, .1em .1em .2em rgba(0, 0, 0, .5);
+            filter: drop-shadow(0px 0px 2px #FFD700);
+
+        }
+
+        h3 {
+            font-size: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Bewerten sie uns</h3>
+    <p class="sternebewertung">
+        <input type="radio" id="stern5" name="bewertung" value="5" onclick="showAlert()"><label for="stern5" title="5 Sterne">5 Sterne</label>
+        <input type="radio" id="stern4" name="bewertung" value="4" onclick="showAlert()"><label for="stern4" title="4 Sterne">4 Sterne</label>
+        <input type="radio" id="stern3" name="bewertung" value="3" onclick="showAlert()"><label for="stern3" title="3 Sterne">3 Sterne</label>
+        <input type="radio" id="stern2" name="bewertung" value="2" onclick="showAlert()"><label for="stern2" title="2 Sterne">2 Sterne</label>
+        <input type="radio" id="stern1" name="bewertung" value="1" onclick="showAlert()"><label for="stern1" title="1 Stern">1 Stern</label>
+    </p>
+    <h1 style="font-size: 500%;">zu den Quiz </h1>
+    <p>
+        <a href="index.html">Hauptstädte Quiz </a>
+    </p>
+    <p>
+        <a href="WissenschaftundTech.html">Wissenschaft und Technologie</a>
+    </p>
+</body>
+<script>
+    function start() {
+
+    }
+    function showAlert() {
+            alert("Vielen Dank für Ihre Bewertung!");
+        }
+</script>
+
+</html>

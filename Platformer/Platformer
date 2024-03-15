@@ -1,0 +1,145 @@
+import arcade
+import time
+
+class Spiel(arcade.Window):
+    def __init__(self):
+        super().__init__(950, 620, "Plattformer")
+        arcade.set_background_color(arcade.color.SKY_BLUE)
+
+        tile_map = arcade.load_tilemap("Tilemap.tmx")
+
+        self.szene = arcade.Scene.from_tilemap(tile_map)
+        self.spieler = arcade.Sprite("spieler-0_1.png", scale= 0.08)
+        self.spieler.center_x = 120
+        self.spieler.center_y = 113
+        self.szene.add_sprite("Spieler", self.spieler)
+
+        self.physik_engine = arcade.PhysicsEnginePlatformer(self.spieler, walls=self.szene.get_sprite_list("Tile Layer 1"))
+        self.physik_engine.enable_multi_jump(2)
+        self.punktestand = 0
+        self.punktestand_liste = [arcade.load_texture("punktestand_1.png"),arcade.load_texture("punktestand_2.png"),arcade.load_texture("punktestand_3.png"),arcade.load_texture("punktestand_4.png"),arcade.load_texture("punktestand_5.png"),arcade.load_texture("punktestand_6.png"),arcade.load_texture("punktestand_7.png"),arcade.load_texture("punktestand_8.png"),arcade.load_texture("punktestand_9"),arcade.load_texture("punktestand_10"),arcade.load_texture("punktestand_11")]
+        self.Kamera = arcade.Camera(self.width, self.height)
+
+        self.spieler_texturen_rechts = [arcade.load_texture("spieler-0_1.png"),arcade.load_texture("spieler-0.png"), arcade.load_texture("spieler-1.png"), arcade.load_texture("spieler-2.png"), arcade.load_texture("spieler-3.png"), arcade.load_texture("spieler-4.png"), arcade.load_texture("spieler-5.png"), arcade.load_texture("spieler-6.png"), arcade.load_texture("spieler-7.png"), arcade.load_texture("spieler-8.png"), arcade.load_texture("spieler-9.png"), arcade.load_texture("spieler-10.png"), arcade.load_texture("spieler-11.png"), arcade.load_texture("spieler-12.png"), arcade.load_texture("spieler-13.png"), arcade.load_texture("spieler-14.png")]
+        self.spieler_texturen_links = [arcade.load_texture("spieler-0_1.png", flipped_horizontally= True),arcade.load_texture("spieler-0.png", flipped_horizontally= True), arcade.load_texture("spieler-1.png", flipped_horizontally= True), arcade.load_texture("spieler-2.png", flipped_horizontally= True), arcade.load_texture("spieler-3.png", flipped_horizontally= True), arcade.load_texture("spieler-4.png", flipped_horizontally= True), arcade.load_texture("spieler-5.png", flipped_horizontally= True), arcade.load_texture("spieler-6.png", flipped_horizontally= True), arcade.load_texture("spieler-7.png", flipped_horizontally= True), arcade.load_texture("spieler-8.png", flipped_horizontally= True), arcade.load_texture("spieler-9.png", flipped_horizontally= True), arcade.load_texture("spieler-10.png", flipped_horizontally= True), arcade.load_texture("spieler-11.png", flipped_horizontally= True), arcade.load_texture("spieler-12.png", flipped_horizontally= True), arcade.load_texture("spieler-13.png", flipped_horizontally= True), arcade.load_texture("spieler-14.png", flipped_horizontally= True)]
+        self.textur_index = 0
+        self.texturen_delta = 0
+
+        self.last_animation_time = time.time()
+        self.gehen = 0
+        self.in_bewegung = False
+        self.rechts = False
+        self.stehen = False
+    
+    def on_key_press(self, symbol, modifiers):
+
+        if symbol == arcade.key.W:
+            if self.physik_engine.can_jump():
+                self.spieler.change_y = 7
+                self.physik_engine.increment_jump_counter()
+
+
+        elif symbol == arcade.key.A:
+            self.spieler.change_x = -2
+            self.in_bewegung = True
+            self.rechts = False
+            self.stehen = False
+        elif symbol == arcade.key.D:
+            self.spieler.change_x = 2
+            self.in_bewegung = True
+            self.rechts = True
+            self.stehen = False
+    def on_key_release(self, symbol, modifiers):
+
+        if symbol == arcade.key.W:
+            self.spieler.change_y = 0
+
+
+        elif symbol == arcade.key.A:
+            self.spieler.change_x = 0
+            self.in_bewegung = False
+            self.stehen = True
+
+        elif symbol == arcade.key.D:
+            self.spieler.change_x = 0
+            self.in_bewegung = False
+            self.stehen = True
+
+
+    def Kamera_zu_Spieler(self):
+        pos_x = self.spieler.center_x - self.width / 2
+        if pos_x < 0:
+            pos_x = 0
+        elif pos_x > 970:
+            pos_x = 970
+        pos_y = self.spieler.center_y - self.height / 2
+        if pos_y < 0:
+            pos_y = 0
+        elif pos_y > 335:
+            pos_y = 335
+
+        self.Kamera.move_to((pos_x, pos_y))    
+    def muenzen_erstellen(self):
+
+        self.muenzen_liste = arcade.SpriteList()
+
+    # Definiere Positionen für deine Münzen oder generiere sie dynamisch
+        muenzen_positionen = [(150, 200), (300, 350), (450, 500)]
+
+        for position in muenzen_positionen:
+            muenze = arcade.Sprite("coin.png")
+            muenze.center_x, muenze.center_y = position
+            self.muenzen_liste.append(muenze)
+            self.szene.add_sprite("Münzen", muenze)  
+    
+
+
+    def on_update(self, delta_time):
+        self.szene.update()
+        self.physik_engine.update()
+
+    # Stelle sicher, dass die Münzen erstellt wurden, wenn nicht bereits geschehen
+        if not hasattr(self, 'muenzen_liste'):
+            self.muenzen_erstellen()
+
+        if self.spieler.center_y <= 10.0:
+           self.__init__()
+
+        if 875.0 <= self.spieler.center_x <= 890.0 and 748.0 <= self.spieler.center_y <= 760.0:
+           self.physik_engine.enable_multi_jump(10)
+
+        self.Kamera_zu_Spieler()
+
+        self.texturen_delta += delta_time
+        if self.texturen_delta >= 0.1:
+            self.textur_index = (self.textur_index + 1) % len(self.spieler_texturen_links)
+            self.texturen_delta = 0
+
+            if self.in_bewegung:
+                if self.rechts:
+                    self.spieler.texture = self.spieler_texturen_rechts[self.textur_index]
+                else:
+                    self.spieler.texture = self.spieler_texturen_links[self.textur_index]
+
+            elif self.stehen:
+                if self.rechts:
+                    self.spieler.texture = self.spieler_texturen_rechts[0]
+                else:
+                    self.spieler.texture = self.spieler_texturen_links[0]
+
+    
+        getroffene_muenzen = arcade.check_for_collision_with_list(self.spieler, self.muenzen_liste)
+
+        for muenze in getroffene_muenzen:
+            muenze.remove_from_sprite_lists()
+            self.punktestand += 1
+
+
+    def on_draw(self):
+        self.clear()
+        self.Kamera.use()
+        self.szene.draw()
+
+
+spiel = Spiel()
+arcade.run()
