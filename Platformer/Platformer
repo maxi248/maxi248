@@ -16,20 +16,6 @@ class Spiel(arcade.Window):
 
         self.physik_engine = arcade.PhysicsEnginePlatformer(self.spieler, walls=self.szene.get_sprite_list("Tile Layer 1"))
         self.physik_engine.enable_multi_jump(2)
-        self.punktestand = 0
-        self.punktestand_liste = [
-            arcade.load_texture("punktestand_1.png"),
-            arcade.load_texture("punktestand_2.png"),
-            arcade.load_texture("punktestand_3.png"),
-            arcade.load_texture("punktestand_4.png"),
-            arcade.load_texture("punktestand_5.png"),
-            arcade.load_texture("punktestand_6.png"),
-            arcade.load_texture("punktestand_7.png"),
-            arcade.load_texture("punktestand_8.png"),
-            arcade.load_texture("punktestand_9.png"),  
-            arcade.load_texture("punktestand_10.png"), 
-            arcade.load_texture("punktestand_11.png")  
-        ]
 
         self.Kamera = arcade.Camera(self.width, self.height)
 
@@ -44,6 +30,21 @@ class Spiel(arcade.Window):
         self.rechts = False
         self.stehen = False
 
+        self.punktestand = 0
+        self.muenzen_liste = arcade.SpriteList()
+        self.muenzen_erstellen()
+        self.punktestand_bilder = [
+            arcade.load_texture("punktestand_1.png"),
+            arcade.load_texture("punktestand_2.png"),
+            arcade.load_texture("punktestand_3.png"),
+            arcade.load_texture("punktestand_4.png"),
+            arcade.load_texture("punktestand_5.png"),
+            arcade.load_texture("punktestand_6.png"),
+            arcade.load_texture("punktestand_7.png"),
+            arcade.load_texture("punktestand_8.png"),
+            arcade.load_texture("punktestand_9.png"),  
+            arcade.load_texture("punktestand_10.png"),
+            arcade.load_texture("punktestand_11.png") ]
 
     def on_key_press(self, symbol, modifiers):
 
@@ -93,34 +94,34 @@ class Spiel(arcade.Window):
             pos_y = 335
 
         self.Kamera.move_to((pos_x, pos_y))    
+        
     def muenzen_erstellen(self):
+        
+        
 
-        self.muenzen_liste = arcade.SpriteList()
 
-    # Definiere Positionen für deine Münzen oder generiere sie dynamisch
         muenzen_positionen = [(150, 200), (300, 350), (450, 500)]
 
         for position in muenzen_positionen:
+  
             muenze = arcade.Sprite("coin.png")
             muenze.center_x, muenze.center_y = position
+
             self.muenzen_liste.append(muenze)
             self.szene.add_sprite("Münzen", muenze)  
-    
-
 
     def on_update(self, delta_time):
         self.szene.update()
         self.physik_engine.update()
 
-    # Stelle sicher, dass die Münzen erstellt wurden, wenn nicht bereits geschehen
         if not hasattr(self, 'muenzen_liste'):
             self.muenzen_erstellen()
 
         if self.spieler.center_y <= 10.0:
-           self.__init__()
+            self.__init__()
 
         if 875.0 <= self.spieler.center_x <= 890.0 and 748.0 <= self.spieler.center_y <= 760.0:
-           self.physik_engine.enable_multi_jump(10)
+            self.physik_engine.enable_multi_jump(15)
 
         self.Kamera_zu_Spieler()
 
@@ -141,36 +142,29 @@ class Spiel(arcade.Window):
                 else:
                     self.spieler.texture = self.spieler_texturen_links[0]
 
-    
-        getroffene_muenzen = arcade.check_for_collision_with_list(self.spieler, self.muenzen_liste)
 
+        getroffene_muenzen = arcade.check_for_collision_with_list(self.spieler, self.muenzen_liste)
         for muenze in getroffene_muenzen:
             muenze.remove_from_sprite_lists()
-            self.punktestand += 1
+
+            self.punktestand = min(self.punktestand + 1, len(self.punktestand_bilder) - 1)
+
 
 
     def on_draw(self):
         self.clear()
+
         self.Kamera.use()
         self.szene.draw()
 
-        # Deaktiviere vorübergehend die Kamera, um HUD-Elemente relativ zum Fenster zu zeichnen
-        self.Kamera.use_fixed()
 
-        # Bestimme den aktuellen Punktestand und wähle das entsprechende Bild
-        punktestand_index = min(self.punktestand, len(self.punktestand_liste) - 1)
-        aktuelles_bild = self.punktestand_liste[punktestand_index]
+        kamera_mitte_x, kamera_mitte_y = self.Kamera.position
+        bild_position_x = kamera_mitte_x + 900
+        bild_position_y = kamera_mitte_y  + 600  
 
-        # Berechne die Position für das Punktestandbild basierend auf der Fenstergröße
-        bild_position_x = self.width - aktuelles_bild.width - 20  # 20 Pixel Abstand vom rechten Rand
-        bild_position_y = self.height - aktuelles_bild.height - 20  # 20 Pixel Abstand vom oberen Rand
-
-        # Zeichne das Bild für den Punktestand
-        arcade.draw_texture_rectangle(bild_position_x, bild_position_y, aktuelles_bild.width, aktuelles_bild.height, aktuelles_bild, alpha=255)
-
-        # Stelle die ursprüngliche Kameraperspektive wieder her
-        self.Kamera.use()
-
+        # Zeichne das aktuelle Punktestandbild
+        aktuelles_bild = self.punktestand_bilder[self.punktestand]
+        arcade.draw_texture_rectangle(bild_position_x, bild_position_y, 120, 120, aktuelles_bild)
 
 
 spiel = Spiel()
