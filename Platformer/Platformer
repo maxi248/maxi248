@@ -21,8 +21,6 @@ class Spiel(arcade.Window):
         self.hintergrund_musik = arcade.load_sound("Hintergrundmusik.wav")
         arcade.play_sound(self.hintergrund_musik, volume=0.5, looping=True)    
 
-
-
         self.spieler_texturen_rechts = [arcade.load_texture("spieler-0_1.png"),arcade.load_texture("spieler-0.png"), arcade.load_texture("spieler-1.png"), arcade.load_texture("spieler-2.png"), arcade.load_texture("spieler-3.png"), arcade.load_texture("spieler-4.png"), arcade.load_texture("spieler-5.png"), arcade.load_texture("spieler-6.png"), arcade.load_texture("spieler-7.png"), arcade.load_texture("spieler-8.png"), arcade.load_texture("spieler-9.png"), arcade.load_texture("spieler-10.png"), arcade.load_texture("spieler-11.png"), arcade.load_texture("spieler-12.png"), arcade.load_texture("spieler-13.png"), arcade.load_texture("spieler-14.png")]
         self.spieler_texturen_links = [arcade.load_texture("spieler-0_1.png", flipped_horizontally= True),arcade.load_texture("spieler-0.png", flipped_horizontally= True), arcade.load_texture("spieler-1.png", flipped_horizontally= True), arcade.load_texture("spieler-2.png", flipped_horizontally= True), arcade.load_texture("spieler-3.png", flipped_horizontally= True), arcade.load_texture("spieler-4.png", flipped_horizontally= True), arcade.load_texture("spieler-5.png", flipped_horizontally= True), arcade.load_texture("spieler-6.png", flipped_horizontally= True), arcade.load_texture("spieler-7.png", flipped_horizontally= True), arcade.load_texture("spieler-8.png", flipped_horizontally= True), arcade.load_texture("spieler-9.png", flipped_horizontally= True), arcade.load_texture("spieler-10.png", flipped_horizontally= True), arcade.load_texture("spieler-11.png", flipped_horizontally= True), arcade.load_texture("spieler-12.png", flipped_horizontally= True), arcade.load_texture("spieler-13.png", flipped_horizontally= True), arcade.load_texture("spieler-14.png", flipped_horizontally= True)]
         self.textur_index = 0
@@ -35,7 +33,7 @@ class Spiel(arcade.Window):
         self.stehen = False
 
         self.punktestand = 0
-        self.muenzen_liste = arcade.SpriteList()
+        self.szene.add_sprite_list("muenzen_liste")
         self.muenzen_erstellen()
         self.punktestand_bilder = [
             arcade.load_texture("punktestand_1.png"),
@@ -49,9 +47,11 @@ class Spiel(arcade.Window):
             arcade.load_texture("punktestand_9.png"),  
             arcade.load_texture("punktestand_10.png"),
             arcade.load_texture("punktestand_11.png") ]
+        
     def spieler_position(self):
         self.spieler.center_x = 120
         self.spieler.center_y = 113
+
 
 
     def on_key_press(self, symbol, modifiers):
@@ -115,20 +115,18 @@ class Spiel(arcade.Window):
             muenze = arcade.Sprite("coin.png")
             muenze.center_x, muenze.center_y = position
 
-            self.muenzen_liste.append(muenze)
-            self.szene.add_sprite("Münzen", muenze)  
+            self.szene["muenzen_liste"].append(muenze)
+
 
     def on_update(self, delta_time):
         self.szene.update()
         self.physik_engine.update()
 
-        if not hasattr(self, 'muenzen_liste'):
-            self.muenzen_erstellen()
-
         if self.spieler.center_y <= 10.0:
             self.spieler_position()
-            self.muenzen_positionen.clear()
+            self.szene["muenzen_liste"].clear()
             self.muenzen_erstellen()
+            self.punktestand = 0 
 
         if 875.0 <= self.spieler.center_x <= 890.0 and 748.0 <= self.spieler.center_y <= 760.0:
             self.physik_engine.enable_multi_jump(15)
@@ -153,7 +151,7 @@ class Spiel(arcade.Window):
                     self.spieler.texture = self.spieler_texturen_links[0]
 
 
-        getroffene_muenzen = arcade.check_for_collision_with_list(self.spieler, self.muenzen_liste)
+        getroffene_muenzen = arcade.check_for_collision_with_list(self.spieler, self.szene["muenzen_liste"])
         for muenze in getroffene_muenzen:
             muenze.remove_from_sprite_lists()
 
@@ -166,7 +164,6 @@ class Spiel(arcade.Window):
 
         self.Kamera.use()
         self.szene.draw()
-
 
         kamera_mitte_x, kamera_mitte_y = self.Kamera.position
         bild_position_x = kamera_mitte_x + 900
