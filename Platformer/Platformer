@@ -6,7 +6,7 @@ class Spiel(arcade.Window):
         arcade.set_background_color(arcade.color.SKY_BLUE)
 
         tile_map = arcade.load_tilemap("Tilemap.tmx")
-
+       # das programm heißt tiled
         self.szene = arcade.Scene.from_tilemap(tile_map)
 
         self.spieler = arcade.Sprite("spieler-0_1.png", scale= 0.08)
@@ -127,7 +127,7 @@ class Spiel(arcade.Window):
             self.szene["muenzen_liste"].clear()
             self.muenzen_erstellen()
             self.punktestand = 0 
-
+            self.physik_engine.enable_multi_jump(2)
         if 875.0 <= self.spieler.center_x <= 890.0 and 748.0 <= self.spieler.center_y <= 760.0:
             self.physik_engine.enable_multi_jump(15)
 
