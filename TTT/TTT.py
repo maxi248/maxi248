@@ -3,15 +3,20 @@ import arcade
 class TTT(arcade.Window):
     def __init__(self):
         super().__init__(600, 600, "Tik Tak Toe", )
-        self.arena = {(0, 0): "", (1, 0): "", (2, 0): "", (0, 1): "", (1, 1): "", (2, 1): "", (0, 2): "", (1,  2): "", (2, 2): "", }
-        arcade.set_background_color(arcade.color.BABY_BLUE)
+        self.arena = {(0, 0): "", (1, 0): "", (2, 0): "", (0, 1): "", (1, 1): "", (2, 1): "", (0, 2): "", (1,  2): "", (2, 2): "" }
+        arcade.set_background_color(arcade.color.BLACK)
         self.spieler = "X"
     def on_mouse_press(self, x, y, button, modifiers):
         x_arena = x // 200
         y_arena = y // 200
-        
-        self.arena[(x_arena,y_arena)] = self.spieler
-        self.spieler = "O" if self.spieler == "X" else "X" 
+
+        if self.arena[(x_arena,y_arena)] == "":
+            self.arena[(x_arena,y_arena)] = self.spieler
+        self.spieler = "O" if self.spieler == "X" else "X"
+
+
+
+
     
     def on_update(self, delta_time):
         ...
