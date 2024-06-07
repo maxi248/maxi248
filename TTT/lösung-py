@@ -1,0 +1,20 @@
+def enthält(self,symbol: str) -> bool:
+#    if self.arena[(0,0)] or self.arena[(1,0)] or self.arena[(1,1)] or self.arena[(0,1)] or self.arena[(2,0)] or self.arena[(2,2)] or self.arena[(0,2)] or self.arena[(1,2)] or self.arena[(2,1)] == symbol:
+ #       return True
+       
+    
+    x, y = 0, 0 
+#   while x <= 2:
+#        while y <= 2:
+#            print(x, y)
+#            if arena[(x, y)] == symbol: 
+#                return True
+#            y = y + 1  
+#        x = x + 1
+#        y = 0
+#    return False
+    return any(arena[(x, y)] == symbol for x in range(3) for y in range(3))
+
+            
+arena = {(0, 0): "", (1, 0): "", (2, 0): "", (0, 1): "", (1, 1): "", (2, 1): "", (0, 2): "", (1,  2): "", (2, 2): "" }
+print(enthält(arena, "X"))
