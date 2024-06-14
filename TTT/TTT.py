@@ -9,6 +9,7 @@ class TTT(arcade.Window):
         arcade.set_background_color(arcade.color.BLACK)
         self.spieler = "X"
         self.reset()
+        
 
     def reset(self):
         self.arena = {(0, 0): "", (1, 0): "", (2, 0): "", (0, 1): "", (1, 1): "", (2, 1): "", (0, 2): "", (1,  2): "", (2, 2): "" }
@@ -49,11 +50,10 @@ class TTT(arcade.Window):
         freie_felder_liste = []
         for i in range(3):
             for j in range(3):
-                if self.arena[(i, j)]:
-                    freie_felder_liste.append(self.arena[(i, j)])
-                    return True
-                    print("t")
-                          
+                if self.arena[(i, j)] == "":
+                    freie_felder_liste.append((i, j))
+        return freie_felder_liste
+                    
 
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.R:
@@ -82,8 +82,8 @@ class TTT(arcade.Window):
             if self.spieler == "O":
                 arcade.draw_rectangle_filled(self.width / 2, self.height / 2, self.width, self.height, arcade.make_transparent_color(arcade.color.BLACK, 150))
                 arcade.draw_text("Du hast Gewonnen, Spieler " + ("X" if self.spieler == "O" else "O"), self.width / 2, self.height /2 , color=arcade.color.WHITE , font_size= 90 , font_name="Garamond", width=self.width, align="center" , anchor_x ="center", anchor_y="center", multiline=True)
-        if self.freie_felder == True:
+        elif self.freie_felder == []:
             arcade.draw_rectangle_filled(self.width / 2, self.height / 2, self.width, self.height, arcade.make_transparent_color(arcade.color.BLACK, 150))
-            arcade.draw_text("Es Ist unentschieden", self.width / 2, self.height /2 , color=arcade.color.WHITE , font_size= 90 , font_name="Garamond", width=self.width, align="center" , anchor_x ="center", anchor_y="center", multiline=True)
+            arcade.draw_text("Es Ist Unentschieden", self.width / 2, self.height /2 , color=arcade.color.WHITE , font_size= 60 , font_name="Garamond", width=self.width, align="center" , anchor_x ="center", anchor_y="center", multiline=True)
 TTT()   
 arcade.run()
