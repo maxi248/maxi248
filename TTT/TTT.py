@@ -1,6 +1,6 @@
 import arcade
 import arcade.color
-
+import random
 
 class TTT(arcade.Window):
     def __init__(self):
@@ -36,6 +36,7 @@ class TTT(arcade.Window):
             return True
         
         return False
+    
 
     def on_mouse_press(self, x, y, button, modifiers):
         self.x_arena = x // 200
@@ -45,16 +46,28 @@ class TTT(arcade.Window):
             self.arena[(self.x_arena, self.y_arena)] = self.spieler
             self.spieler = "O" if self.spieler == "X" else "X"
        
-
-    def freie_felder(self):
-        freie_felder_liste = []
+    def zufälliges_freies_feld(self):
+        if self.spieler == "O":
+                return random.choice(self._freie_felder())
+        
+    def _freie_felder(self):
+        self.freie_felder_liste = []
         for i in range(3):
             for j in range(3):
                 if self.arena[(i, j)] == "":
-                    freie_felder_liste.append((i, j))
-        return freie_felder_liste
+                    self.freie_felder_liste.append((i, j))
+        return self.freie_felder_liste
                     
-
+    def _gewinnendes_feld(self, symbol):
+        for i in range(3):
+            for j in range(3):
+                self.arena[(i, j)] = symbol
+                if self._gewinnprüfung():
+                    self.arena[(i, j)] = ""
+                    return(i, j)
+                self.arena[(i, j)] = ""
+    
+                
     def on_key_press(self, symbol, modifiers):
         if symbol == arcade.key.R:
             self.reset() 
@@ -62,7 +75,11 @@ class TTT(arcade.Window):
             arcade.exit()
 
     def on_update(self, delta_time):
-        ...
+        if self._gewinnprüfung() == False and len(self._freie_felder()) > 0:
+            if self.spieler == "O":
+                self.arena[(self.zufälliges_freies_feld())] = self.spieler
+                self.spieler = "O" if self.spieler == "X" else "X"
+            print(self.zufälliges_freies_feld())
 
     def on_draw(self):
         self.clear()
