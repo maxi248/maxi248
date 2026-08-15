@@ -4,21 +4,30 @@ Recherche-Stand: 15.08.2026
 
 ## Kurzfassung
 
-FAMA veröffentlicht **keine dokumentierte öffentliche API** und ist auch **nicht** im
-nationalen Open-Data-Katalog (data.gov.my / OpenDOSM) gelistet. Ein automatischer Abruf
-ist trotzdem realistisch – über drei Wege, in dieser Reihenfolge:
+**Ergebnis:** Die FAMA-Preisdaten sind über die AMI-API **ohne Anmeldung** maschinell
+abrufbar – täglich, auf allen drei Preisebenen (Ladang / Borong / Runcit). Der Import in
+die NuMIS-Datenbank läuft automatisiert und holt ausgefallene Tage selbsttätig nach.
 
-| Weg | Deckt ab | Aufwand | Rechtlich |
-|---|---|---|---|
-| 1. AMI-Portal-Endpunkte selbst entdecken (`probe_fama.py`) | Ladang / Borong / Runcit, täglich, 262 Sorten | niedrig, aber unbestätigt | Graubereich, ToS prüfen |
-| 2. PriceCatcher über data.gov.my (`fetch_pricecatcher.py`) | nur Runcit (Einzelhandel), ~750 Artikel | sehr niedrig, dokumentiert | offene Lizenz |
-| 3. Offizieller Datenantrag bei FAMA | alles, inkl. Historie | Wochen | sauber |
+```
+GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=1000&offset=0
+```
 
-**Wichtig:** Aus der Session, in der dieses Repo erstellt wurde, waren *alle*
-`*.gov.my`-Hosts durch die Netzwerk-Policy gesperrt (403 beim CONNECT-Tunnel). Ich konnte
-die AMI-Endpunkte deshalb **nicht selbst live testen**. Genau dafür ist `probe_fama.py` da:
-Du führst es aus einem normalen Netz aus und bekommst eine belastbare Antwort statt einer
-Vermutung.
+| Skript | Zweck |
+|---|---|
+| `fama_ami_client.py` | Abruf als CSV (`prices`, `refs`, `table`) und Diagnose (`probe`, `apitest`) |
+| `fama_to_numis.py` | Täglicher Import nach Supabase/NuMIS inklusive Nachladen |
+| `run_fama_import.bat` | Windows-Aufgabenplanung |
+| `probe_fama*.py` | Die drei Erkundungsstufen, mit denen die API gefunden wurde |
+| `fetch_pricecatcher.py` | Alternativquelle KPDN PriceCatcher (nur Einzelhandel) |
+
+FAMA veröffentlicht dazu **keine Dokumentation**, und die Daten stehen **nicht** im
+nationalen Open-Data-Katalog (data.gov.my / OpenDOSM) – die Schnittstelle wurde aus den
+App-Bundles des Portals rekonstruiert (siehe unten). Für internen Gebrauch ist das
+unproblematisch; vor einer Veröffentlichung oder kommerziellen Nutzung sollte die
+Bahagian Maklumat Pasaran (03-6136 2020, App. 2141/2153) kurz einbezogen werden.
+
+Die Abschnitte darunter dokumentieren den Weg dorthin – einschließlich zweier Irrwege, die
+bewusst stehen bleiben, weil sie erklären, warum die Lösung so aussieht, wie sie aussieht.
 
 ## 1. AMI-Portal (`ami.fama.gov.my`)
 
@@ -137,11 +146,12 @@ bedeutungslos, da sie offen sind.
   direkt Daten (`reflevel` u. a. mit `levelcd`, `levelbm`, `levelen`, `levelactive`,
   `parentlevelcd`, `order`, `icon`).
 - Die Engine ist **nicht** php-crud-api: die App setzt Filterwerte in Anführungszeichen
-  (`filter=adminid,eq,'X'`), was php-crud-api nicht tut. Entsprechend ist auch dessen
-  Blätter-Syntax `?page=n,size` falsch – sie erzeugt am Server einen **502 Bad Gateway**.
-  `fama_ami_client.py apitest` ermittelt die tatsächlich akzeptierte Begrenzung, indem es
-  gängige Varianten (`limit`, `offset`, `size`, `page&limit` …) gegen die offene Tabelle
-  `reflevel` durchprobiert und prüft, ob die Zeilenzahl wirklich sinkt.
+  (`filter=adminid,eq,'X'`), was php-crud-api nicht tut. Dessen Blätter-Syntax
+  `?page=n,size` wird hier **stillschweigend ignoriert** – der Server liefert dann die
+  ganze Tabelle und läuft bei großen Tabellen in den 502. `fama_ami_client.py apitest`
+  ermittelt die tatsächlich akzeptierte Begrenzung, indem es gängige Varianten (`limit`,
+  `offset`, `size`, `page&limit` …) gegen die offene Tabelle `reflevel` durchprobiert und
+  prüft, ob die Zeilenzahl wirklich sinkt.
 - Keycloak antwortet auf den Passwort-Login mit `invalid_grant` („Invalid user
   credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
   aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
