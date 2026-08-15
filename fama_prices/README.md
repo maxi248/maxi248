@@ -233,7 +233,9 @@ in den Funktionen – der Client bleibt dumm und ist damit leicht austauschbar.
 ### Loader benutzen
 
 ```bash
-set NUMIS_SERVICE_KEY=<service-role-key>     # Windows, einmalig: setx …
+$env:NUMIS_SERVICE_KEY = "<service-role-key>"   # PowerShell
+set NUMIS_SERVICE_KEY=<service-role-key>        # cmd.exe
+setx NUMIS_SERVICE_KEY "<service-role-key>"     # dauerhaft, für die Aufgabenplanung
 python fama_to_numis.py                      # letzte 7 Tage prüfen und nachholen
 python fama_to_numis.py --days 30
 python fama_to_numis.py --from 2026-07-01 --to 2026-07-31

@@ -18,8 +18,12 @@ Ablauf pro Lauf:
 Voraussetzungen:
   - fama_ami_client.py liegt im selben Ordner (liefert den FAMA-Abruf)
   - Umgebungsvariable mit dem Supabase-Service-Role-Key:
-        set NUMIS_SERVICE_KEY=...        (Windows)
+        $env:NUMIS_SERVICE_KEY = "..."   (PowerShell)
+        set NUMIS_SERVICE_KEY=...        (cmd.exe)
         export NUMIS_SERVICE_KEY=...     (Mac/Linux)
+        setx NUMIS_SERVICE_KEY "..."     (dauerhaft, fuer die Aufgabenplanung)
+    Achtung: In PowerShell ist 'set' ein Alias fuer Set-Variable und legt
+    KEINE Umgebungsvariable an - der Befehl wirkt dann einfach nicht.
     Der Key umgeht RLS und gehoert deshalb NICHT in eine Datei im Repo.
 
 Beispiele:
@@ -75,10 +79,27 @@ HTTP_RETRIES = 4
 def service_key() -> str:
     key = os.environ.get("NUMIS_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
     if not key:
+        # PowerShell und cmd.exe setzen Umgebungsvariablen unterschiedlich.
+        # In PowerShell ist 'set' ein Alias fuer Set-Variable und legt KEINE
+        # Umgebungsvariable an - der Aufruf sieht erfolgreich aus, wirkt aber nicht.
         print("Umgebungsvariable NUMIS_SERVICE_KEY fehlt.\n"
-              "  Windows:   set NUMIS_SERVICE_KEY=<service-role-key>\n"
-              "  Mac/Linux: export NUMIS_SERVICE_KEY=<service-role-key>\n"
-              "Zu finden im Supabase-Dashboard unter Project Settings -> API Keys.",
+              "\n"
+              "  PowerShell (Eingabezeile beginnt mit 'PS'):\n"
+              '      $env:NUMIS_SERVICE_KEY = "<service-role-key>"\n'
+              "\n"
+              "  cmd.exe:\n"
+              "      set NUMIS_SERVICE_KEY=<service-role-key>\n"
+              "\n"
+              "  Mac/Linux:\n"
+              "      export NUMIS_SERVICE_KEY=<service-role-key>\n"
+              "\n"
+              "Dauerhaft setzen (gilt auch fuer die Aufgabenplanung, danach neues\n"
+              "Fenster oeffnen):\n"
+              '      setx NUMIS_SERVICE_KEY "<service-role-key>"\n'
+              "\n"
+              "Zu finden im Supabase-Dashboard unter Project Settings -> API Keys\n"
+              "als 'service_role'. Achtung: dieser Key umgeht alle Zugriffsregeln -\n"
+              "nicht weitergeben und nicht in eine Datei im Repo schreiben.",
               file=sys.stderr)
         raise SystemExit(2)
     return key
@@ -147,7 +168,7 @@ def main() -> int:
     ap.add_argument("--to", help="Enddatum JJJJ-MM-TT (Standard: heute)")
     ap.add_argument("--timeout", type=int, default=90)
     ap.add_argument("--page-size", type=int, default=1000, help="Zeilen pro FAMA-Anfrage")
-    ap.add_argument("--page-style", choices=["offset", "page", "skip", "start", "none"],
+    ap.add_argument("--page-style", choices=["auto", "offset", "page", "skip", "start", "none"],
                     help="Blaetter-Verfahren; mit 'fama_ami_client.py pagetest' ermitteln")
     ap.add_argument("--dry-run", action="store_true",
                     help="Nur abrufen und zeigen, nichts in die Datenbank schreiben")

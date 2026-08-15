@@ -685,7 +685,7 @@ def main() -> int:
         # grossen Tabellen die komplette Ausgabe und antwortet mit 502.
         p.add_argument("--page-size", type=int, default=1000,
                        help="Zeilen pro Anfrage (Standard 1000)")
-        p.add_argument("--page-style", choices=["offset", "page", "skip", "start", "none"],
+        p.add_argument("--page-style", choices=["auto", "offset", "page", "skip", "start", "none"],
                        help="Blaetter-Verfahren (Standard: %s) - mit 'pagetest' ermitteln" % PAGE_STYLE)
 
     p = sub.add_parser("probe", help="ohne Anmeldung pruefen, was erreichbar ist")
