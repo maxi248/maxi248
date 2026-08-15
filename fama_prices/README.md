@@ -34,7 +34,31 @@ Wochen-, Monats- und Jahresberichte mit Trendanalysen und zeigt interaktive Char
 Karten – **interaktive Frontends dieser Art laden ihre Daten praktisch immer über
 JSON-Endpunkte nach**. Das ist der Ansatzpunkt.
 
-`probe_fama.py` macht genau das systematisch:
+### Was die Messläufe ergeben haben (Stand Runde 2)
+
+Aufbau des Portals, aus den Snapshots rekonstruiert:
+
+| URL | Technik | Rolle |
+|---|---|---|
+| `ami.fama.gov.my/` | Next.js | reine Landingpage: Werbetext + „Log Masuk mengikut jenis pengguna". **Keine Preisdaten.** |
+| `ami.fama.gov.my/awam` | Quasar/Vue SPA | „awam" = öffentlich |
+| `ami.fama.gov.my/web-awam` | Quasar/Vue SPA | öffentlich, mit Excel-Export (`xlsx.full.min.js`) |
+| `ami.fama.gov.my/web` | Quasar/Vue SPA | „FAMA – Maklumat Harga", mit Excel-Export |
+| `ami.fama.gov.my/mobile` | Quasar/Vue SPA | Mobilvariante |
+
+Alle vier Apps laden `https://ami.fama.gov.my/kc/js/keycloak.js` – der Zugang läuft also
+über **Keycloak** (OpenID Connect). Die Daten kommen damit mit hoher Wahrscheinlichkeit aus
+einer REST-API, die ein Token erwartet.
+
+Wichtige Korrektur zu Runde 2: Die Meldung „Preisdaten stecken im HTML/RSC" war ein
+Fehlalarm – die Treffer auf „harga/komoditi" stammten aus dem Meta-Description-Text der
+Landingpage, nicht aus echten Daten. Runde 2 hatte die SPA-Bundles außerdem nie gelesen,
+weil deren relative Script-Pfade gegen `/awam` statt `/awam/` aufgelöst wurden.
+`probe_fama3.py` behebt beides.
+
+### Skripte
+
+`probe_fama.py` (Runde 1) macht die Grunderkennung:
 
 ```bash
 python3 probe_fama.py                 # Standardlauf, schreibt fama_probe_report.json
@@ -49,7 +73,22 @@ prüfen, ob echtes JSON zurückkommt, inkl. Schema-Vorschau.
 Exit-Codes: `0` = JSON-Endpunkte gefunden, `1` = keine gefunden (dann HTML-Scraping oder
 Weg 3), `2` = Netzwerk blockiert, Ergebnis unentschieden.
 
-Findet das Skript Endpunkte, steht im Report direkt das Feld-Schema – daraus ist ein
+`probe_fama3.py` (Runde 3) ist der eigentliche Schritt: Es lädt die vier Quasar-Apps mit
+korrekt aufgelösten Bundle-Pfaden und sucht darin nach der axios-`baseURL`, konkreten
+Endpunkt-Pfaden, den Vue-Router-Routen und der Keycloak-Konfiguration (`realm`,
+`clientId`). Relative API-Pfade werden an die gefundene API-Basis gehängt, nicht an die
+Seiten-URL. Anschließend fragt es die Keycloak-Discovery ab
+(`/kc/realms/<realm>/.well-known/openid-configuration`), um zu sehen, welche Grant-Types
+möglich sind.
+
+```bash
+python3 probe_fama3.py
+```
+
+Ein Ergebnis mit **HTTP 401/403 ist ein Erfolg**, kein Fehlschlag: Es beweist, dass die API
+existiert und nur ein Token fehlt. Die App-Bundles landen in `fama_bundles/`.
+
+Findet ein Skript Endpunkte, steht im Report direkt das Feld-Schema – daraus ist ein
 Tagesabruf dann eine Sache von wenigen Zeilen.
 
 **Vor dem Dauerbetrieb:** Nutzungsbedingungen und `robots.txt` von FAMA prüfen und
