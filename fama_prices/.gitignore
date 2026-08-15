@@ -8,6 +8,9 @@ fama_snapshots/
 fama_bundles/
 fama_refs/
 
+__pycache__/
+*.pyc
+
 # Zugangsdaten haben hier ohnehin nichts zu suchen
 .env
 *.key
