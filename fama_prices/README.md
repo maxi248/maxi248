@@ -105,8 +105,31 @@ Die wichtigsten Tabellen aus dem Bundle:
 
 Feldwerte in `harga`: `commoditytype` = `D` (harian/täglich) oder `W` (mingguan/wöchentlich);
 `status` = `Hantar` (eingereicht), `Disemak` (geprüft), `Ditolak` (abgelehnt);
-weitere Spalten u. a. `pricedate`, `commoditylevel` (Ladang/Borong/Runcit),
-`commodityvarietybm`, `gradecd`/`gradebm`, `sourceid`, `adminid`.
+weitere Spalten u. a. `pricedate`, `commodityvarietybm`, `sourceid`, `adminid`.
+
+**`commoditylevel` enthält einen Code, keinen Klartext** – ebenso `commoditygrade`,
+`commodityunit` und `sublevel`. Aus `reflevel` (am System geprüft):
+
+| Code | Preisebene |
+|---|---|
+| `01` | **BORONG** – Großhandel |
+| `03` | **RUNCIT** – Einzelhandel |
+| `04` | **LADANG** – Ab Hof / Erzeuger |
+
+Die Reihenfolge ist also *nicht* Ladang/Borong/Runcit – wer sie errät, liegt falsch.
+`sublevel` verweist auf dieselbe Tabelle und verfeinert die Ebene, z. B. `RUNCIT - PASAR
+AWAM / PUSAT PERUNCITAN`, `PASAR BORONG / PUSAT PEMBORONGAN`, `PASAR TANI`,
+`RUNCIT - MYFARM OUTLET (MFO)`, `LADANG - BELIAN PO`, `KILANG BELIAN`.
+
+Güteklassen aus `refgrade`: `049` = `PREMIUM`, `050` = `1`, `051` = `2`, `998` =
+`TIADA GRED`. Die Klassen 1 und 2 heißen bei FAMA tatsächlich nur „1" und „2" – das ist
+kein Datenfehler, sondern der Originalwert.
+
+Einheiten aus `refunit`: `01` = `KILOGRAM`, `02` = `BIJI` (Stück), `07` = `TONGKOL`
+(Kolben), `08` = `TANGKAI` (Stiel), `34` = `RM/5 KEPING`. `refunit` führt zu jedem Code
+auch einen englischen Namen (`KILOGRAM(S)`, `PIECE(S)`, `EAR(S)/COB(S)`, `STALK(S)`) –
+beide stehen in `numis.fama_code_lookup` und sind für eine zweisprachige Oberfläche
+verfügbar.
 
 Die `baseURL: "https://api.example.com"` im Bundle ist ein ungenutzter Quasar-Standardwert,
 keine echte Adresse – die realen Basis-URLs stehen im Modul `32554`.
