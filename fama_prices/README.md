@@ -102,7 +102,36 @@ weitere Spalten u. a. `pricedate`, `commoditylevel` (Ladang/Borong/Runcit),
 Die `baseURL: "https://api.example.com"` im Bundle ist ein ungenutzter Quasar-Standardwert,
 keine echte Adresse – die realen Basis-URLs stehen im Modul `32554`.
 
-**Gemessen am laufenden System (Runde 4):**
+### Ergebnis: die Preisdaten sind ohne Anmeldung abrufbar
+
+Am laufenden System gemessen – **`harga` und alle Referenztabellen antworten anonym**,
+es wird kein Token benötigt:
+
+```
+GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=1000&offset=0
+```
+
+`harga` liefert rund 50 Spalten, darunter `price`, `oprice`, `pricedate`, `commoditylevel`,
+`sublevel`, `commodityvarietybm`, `commoditygrade`, `commodityunit`, `negeri`, `daerah`,
+`statecd`, `districtcd`, `institutionbm`, `instaddressnm`, `sourceid`, `supply`,
+`average14`, `commodityfloorprice`, `commodityceilingprice`, `status`, `systemdate`.
+
+Ebenfalls offen: `refcommodity`, `refgrade`, `refunit`, `refcommodityvariety`,
+`refcommoditycategory`, `reflevel` (47 Zeilen), `vstate`, `vdistrict`, `f_vpasarborong`,
+`harga2h`, `harga2m`, `mv_mon_avg` (`avg`, `bulan`, `tahun`, `negeri`, `commoditylevel`)
+und `smp.laporansegar` (`averageprice`, `samplecount`, `gred`, `kategori`).
+
+**Blättern:** Der Server akzeptiert `?limit=N` und `?offset=M`; `size`, `take`, `top`,
+`per_page`, `page=n,size` werden stillschweigend ignoriert. Ohne `limit` versucht er bei
+großen Tabellen die vollständige Ausgabe und bricht mit **502 Bad Gateway** ab – genau das
+waren die anfänglichen 502er, nicht ein Berechtigungsproblem.
+
+**Zum Login:** Ein Konto, das per *Sign in with Google* angelegt wurde, hat in Keycloak
+kein eigenes Passwort – die Prüfung läuft bei Google. Der Direct Access Grant kann dafür
+prinzipiell nicht funktionieren (`invalid_grant`). Für die Preisdaten ist das
+bedeutungslos, da sie offen sind.
+
+**Weitere Details:**
 
 - Ein Teil der API ist **ohne jede Anmeldung** offen: `reflevel` und `vstate` liefern
   direkt Daten (`reflevel` u. a. mit `levelcd`, `levelbm`, `levelen`, `levelactive`,

@@ -216,32 +216,45 @@ def get_password(cli_value: str | None) -> str:
 # --------------------------------------------------------------------------- API
 
 def fetch_table(op, endpoint: str, token: str | None, timeout: int,
-                page_size: int = 0, base: str = API, extra: str = "") -> list[dict]:
-    """Holt eine Tabelle, optional seitenweise (php-crud-api-Stil: ?page=n,size)."""
-    sep = "&" if "?" in endpoint else "?"
-    if not page_size:
-        url = base + endpoint + (sep + extra if extra else "")
-        res = request(op, url, token=token, timeout=timeout)
-        payload = as_json(res)
-        if payload is None:
-            raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: {(res.get('text') or '')[:200]}")
-        return rows_of(payload)
+                page_size: int = 0, base: str | None = None, quiet: bool = False) -> list[dict]:
+    """Holt eine Tabelle seitenweise mit ?limit=&offset= (am System gemessen).
 
+    Ohne 'limit' liefert der Server bei grossen Tabellen einen 502, weil er die
+    komplette Tabelle zu erzeugen versucht. Deshalb wird immer begrenzt.
+
+    Wuerde 'offset' ignoriert, kaeme endlos dieselbe Seite - das wird an der
+    ersten Zeile jeder Seite erkannt und bricht dann sauber ab.
+    """
+    base = base or API          # erst zur Laufzeit aufloesen, damit API ersetzbar bleibt
+    limit = page_size or 1000
     collected: list[dict] = []
-    page = 1
+    offset = 0
+    seen_first: set[str] = set()
     while True:
-        parts = [p for p in (extra, f"page={page},{page_size}") if p]
-        url = base + endpoint + sep + "&".join(parts)
+        sep = "&" if "?" in endpoint else "?"
+        url = f"{base}{endpoint}{sep}limit={limit}&offset={offset}"
         res = request(op, url, token=token, timeout=timeout)
         payload = as_json(res)
         if payload is None:
-            raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: {(res.get('text') or '')[:200]}")
+            raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: "
+                               f"{(res.get('text') or '')[:160]}")
         batch = rows_of(payload)
-        collected.extend(batch)
-        print(f"    Seite {page}: {len(batch)} Zeilen (gesamt {len(collected)})")
-        if len(batch) < page_size:
+        if not batch:
             return collected
-        page += 1
+
+        signature = json.dumps(batch[0], sort_keys=True, default=str)[:400]
+        if signature in seen_first:
+            print("    !! 'offset' wird vom Server ignoriert - Abbruch, "
+                  "Ergebnis kann unvollstaendig sein")
+            return collected
+        seen_first.add(signature)
+
+        collected.extend(batch)
+        if not quiet and offset:
+            print(f"    +{len(batch)} Zeilen (gesamt {len(collected):,})")
+        if len(batch) < limit:
+            return collected
+        offset += limit
 
 
 def write_csv(rows: list[dict], path: str) -> None:
@@ -365,30 +378,32 @@ def cmd_apitest(op, args) -> int:
 
 
 def authenticate(op, args) -> str | None:
-    if not args.user:
-        print("Fehlt: --user (deine AMI-Anmeldeadresse)", file=sys.stderr)
+    """Anmeldung ist OPTIONAL - die Preistabellen sind offen erreichbar.
+
+    Nur wenn --user gesetzt ist, wird ueberhaupt ein Token geholt. Bei einem
+    ueber Google angelegten Konto kann der Passwort-Login prinzipiell nicht
+    klappen: in Keycloak liegt dann gar kein Passwort, die Pruefung passiert
+    bei Google. Fuer die Preisdaten wird beides nicht gebraucht.
+    """
+    if not getattr(args, "user", None):
         return None
     token, _ = login(op, args.user, get_password(args.password), args.realm, args.client, args.timeout)
     if not token:
-        print("\nAnmeldung fehlgeschlagen. Moegliche Gruende:\n"
-              "  - Benutzername/Passwort falsch\n"
-              "  - dein Konto liegt in einem anderen Realm (--realm AMI --client respondent)\n"
-              "  - der Client erlaubt kein Direct-Access-Grant; dann bitte melden,\n"
-              "    dann bauen wir den Browser-Login-Weg (authorization_code).",
+        print("\n  Hinweis: Abruf laeuft ohne Token weiter - die Preistabellen sind offen.\n"
+              "  Ein Passwort-Login ist bei Google-Konten technisch nicht moeglich.\n",
               file=sys.stderr)
     return token
 
 
 def cmd_refs(op, args) -> int:
     token = authenticate(op, args)
-    if not token:
-        return 1
     os.makedirs(args.outdir, exist_ok=True)
     print()
     for name in REF_SET:
         endpoint = TABLES[name]
         try:
-            rows = fetch_table(op, endpoint, token, args.timeout)
+            rows = fetch_table(op, endpoint, token, args.timeout,
+                               page_size=args.page_size, quiet=True)
         except RuntimeError as exc:
             print(f"  {name}: Fehler {exc}")
             continue
@@ -398,35 +413,60 @@ def cmd_refs(op, args) -> int:
 
 
 def cmd_prices(op, args) -> int:
+    """Holt 'harga' Tag fuer Tag.
+
+    Bewusst Tag fuer Tag mit 'eq' statt einer Spanne mit 'ge'/'le': die App
+    selbst benutzt nur 'eq'/'neq', ob der Server Vergleichsoperatoren kann, ist
+    also ungeprueft. Ausserdem bleibt so jede einzelne Anfrage klein - genau
+    daran (zu grosse Antwort) scheitert der Server sonst mit 502.
+    """
+    import datetime as _dt
+
     token = authenticate(op, args)
-    if not token:
-        return 1
-    filters = []
-    if args.type:
-        filters.append(f"filter=commoditytype,eq,'{args.type}'")
-    if getattr(args, "from_"):
-        filters.append(f"filter=pricedate,ge,'{args.from_}'")
-    if args.to:
-        filters.append(f"filter=pricedate,le,'{args.to}'")
-    if args.status:
-        filters.append(f"filter=status,eq,'{args.status}'")
-    endpoint = "harga" + ("?" + "&".join(filters) if filters else "")
-    print(f"\n  Abruf: {API}{endpoint}")
     try:
-        rows = fetch_table(op, endpoint, token, args.timeout, page_size=args.page_size)
-    except RuntimeError as exc:
-        print(f"  Fehler: {exc}", file=sys.stderr)
-        return 1
-    if rows:
-        print(f"  Spalten: {sorted(rows[0])}")
-    write_csv(rows, args.out)
+        start = _dt.date.fromisoformat(args.from_)
+        end = _dt.date.fromisoformat(args.to) if args.to else start
+    except (TypeError, ValueError):
+        print("Fehlt oder ungueltig: --from JJJJ-MM-TT (optional --to JJJJ-MM-TT)", file=sys.stderr)
+        return 2
+    if end < start:
+        start, end = end, start
+
+    extra = []
+    if args.type:
+        extra.append(f"filter=commoditytype,eq,'{args.type}'")
+    if args.level:
+        extra.append(f"filter=commoditylevel,eq,{urllib.parse.quote(chr(39) + args.level + chr(39))}")
+    if args.status:
+        extra.append(f"filter=status,eq,'{args.status}'")
+
+    all_rows: list[dict] = []
+    day = start
+    days = (end - start).days + 1
+    print(f"\n  Zeitraum {start} bis {end}  ({days} Tag(e))\n")
+    while day <= end:
+        endpoint = f"harga?filter=pricedate,eq,'{day.isoformat()}'"
+        if extra:
+            endpoint += "&" + "&".join(extra)
+        try:
+            rows = fetch_table(op, endpoint, token, args.timeout,
+                               page_size=args.page_size, quiet=True)
+        except RuntimeError as exc:
+            print(f"  {day}: Fehler {exc}")
+            day += _dt.timedelta(days=1)
+            continue
+        all_rows.extend(rows)
+        print(f"  {day}: {len(rows):,} Zeilen  (gesamt {len(all_rows):,})")
+        day += _dt.timedelta(days=1)
+
+    if all_rows:
+        print(f"\n  Spalten: {sorted(all_rows[0])}")
+    write_csv(all_rows, args.out)
     return 0
 
 
 def cmd_table(op, args) -> int:
     token = authenticate(op, args)
-    if not token:
-        return 1
     endpoint = TABLES.get(args.name, args.name)
     if args.filter:
         sep = "&" if "?" in endpoint else "?"
@@ -458,10 +498,10 @@ def main() -> int:
         p.add_argument("--password", help="besser weglassen - wird sonst abgefragt")
         p.add_argument("--realm", help="FAMA oder AMI (sonst werden beide probiert)")
         p.add_argument("--client", help="webadmin | respondent | mobilefama")
-        # 0 = kein Blaettern. Die Syntax '?page=n,size' loest hier einen 502 aus,
-        # deshalb ist Blaettern standardmaessig aus; passende Syntax via 'apitest'.
-        p.add_argument("--page-size", type=int, default=0,
-                       help="0 = ohne Blaettern (Standard, da die Server-Syntax abweicht)")
+        # Der Server versteht ?limit=&offset= . Ohne 'limit' versucht er bei
+        # grossen Tabellen die komplette Ausgabe und antwortet mit 502.
+        p.add_argument("--page-size", type=int, default=1000,
+                       help="Zeilen pro Anfrage (Standard 1000)")
 
     p = sub.add_parser("probe", help="ohne Anmeldung pruefen, was erreichbar ist")
 
@@ -474,9 +514,10 @@ def main() -> int:
 
     p = sub.add_parser("prices", help="Preistabelle 'harga' als CSV")
     add_auth(p)
-    p.add_argument("--from", dest="from_", help="Startdatum JJJJ-MM-TT")
-    p.add_argument("--to", help="Enddatum JJJJ-MM-TT")
+    p.add_argument("--from", dest="from_", required=True, help="Startdatum JJJJ-MM-TT")
+    p.add_argument("--to", help="Enddatum JJJJ-MM-TT (ohne Angabe nur der Starttag)")
     p.add_argument("--type", choices=["D", "W"], help="D = taeglich, W = woechentlich")
+    p.add_argument("--level", help="Preisebene, z.B. Ladang | Borong | Runcit")
     p.add_argument("--status", help="z.B. Disemak (geprueft)")
     p.add_argument("--out", default="harga.csv")
 
