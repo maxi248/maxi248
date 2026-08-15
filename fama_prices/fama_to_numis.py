@@ -196,6 +196,13 @@ def main() -> int:
     ap.add_argument("--page-size", type=int, default=1000, help="Zeilen pro FAMA-Anfrage")
     ap.add_argument("--page-style", choices=["auto", "offset", "page", "skip", "start", "none"],
                     help="Blaetter-Verfahren; mit 'fama_ami_client.py pagetest' ermitteln")
+    ap.add_argument("--delay", type=float, default=0.0, metavar="SEK",
+                    help="Pause zwischen zwei Tagen. Bei grossen Nachladungen "
+                         "1-3 Sekunden waehlen, damit FAMA nicht mit Anfragen "
+                         "ueberzogen wird.")
+    ap.add_argument("--skip-lookups", action="store_true",
+                    help="Referenztabellen nicht erneut abgleichen (spart drei "
+                         "Anfragen je Lauf, wenn sie schon aktuell sind)")
     ap.add_argument("--backfill", action="store_true",
                     help="bereits importierte Zeilen neu aufloesen (Codes -> Klartext); "
                          "nutzt die gespeicherten Rohzeilen, kein erneuter FAMA-Abruf")
@@ -216,7 +223,7 @@ def main() -> int:
     print(f"NuMIS: {SUPABASE_URL}")
     print(f"Fenster: {start} bis {end}\n")
 
-    if not args.dry_run:
+    if not args.dry_run and not args.skip_lookups:
         sync_lookups(opener, key, args)
         if args.backfill:
             n = rpc(opener, "numis_backfill_fama_codes", {}, key)
@@ -237,7 +244,10 @@ def main() -> int:
     total_raw = total_obs = 0
     failed: list[str] = []
 
-    for day in days:
+    for index, day in enumerate(days):
+        # Freundlich bleiben: FAMA ist eine Behoerdeninfrastruktur, kein CDN.
+        if args.delay and index:
+            time.sleep(args.delay)
         print(f"{day}:")
         try:
             rows = fetch_fama_day(opener, day, args.timeout, args.page_size, args.page_style)

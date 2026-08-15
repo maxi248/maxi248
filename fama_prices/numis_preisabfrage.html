@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>NuMIS – FAMA Preisabfrage</title>
+<style>
+  :root{
+    --bg:#f6f7f5; --card:#fff; --ink:#16211c; --muted:#5d6b64; --line:#dfe4e0;
+    --accent:#1f6f4a; --accent-soft:#e6f2eb; --warn:#8a4b12; --shadow:0 1px 2px rgba(16,32,24,.06),0 4px 14px rgba(16,32,24,.05);
+    --borong:#1f6f4a; --runcit:#2c5f8a; --ladang:#8a5a1f;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#101513; --card:#182320; --ink:#e8efea; --muted:#9aa8a1; --line:#26332e;
+      --accent:#5fc394; --accent-soft:#1a2f26; --warn:#e0a86a; --shadow:none;
+      --borong:#5fc394; --runcit:#7fb2df; --ladang:#d9a45f;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    padding-bottom:env(safe-area-inset-bottom);
+    -webkit-text-size-adjust:100%;
+  }
+  header{
+    padding:18px 16px 14px; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:10;
+  }
+  h1{margin:0; font-size:19px; letter-spacing:-.01em}
+  .sub{margin:3px 0 0; font-size:13px; color:var(--muted)}
+  main{max-width:960px; margin:0 auto; padding:14px 12px 40px}
+
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:var(--shadow)}
+  .grid{display:grid; gap:10px; grid-template-columns:1fr}
+  @media (min-width:560px){ .grid{grid-template-columns:1fr 1fr} .grid .wide{grid-column:1/-1} }
+
+  label{display:block; font-size:12px; font-weight:600; color:var(--muted); margin:0 0 4px; text-transform:uppercase; letter-spacing:.04em}
+  select,input[type=date]{
+    width:100%; min-height:46px; padding:10px 12px; font-size:16px; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:10px; appearance:none;
+  }
+  select:focus,input:focus{outline:2px solid var(--accent); outline-offset:1px}
+
+  .tabs{display:flex; gap:6px; margin:14px 0 10px}
+  .tab{
+    flex:1; min-height:44px; border:1px solid var(--line); background:var(--card); color:var(--muted);
+    border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .tab[aria-selected=true]{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
+
+  .status{padding:14px 4px; font-size:14px; color:var(--muted)}
+  .status.err{color:var(--warn)}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 13px; margin-bottom:9px; box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 8px; font-size:15px; line-height:1.3; letter-spacing:-.01em}
+  .row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13.5px}
+  .row + .row{margin-top:3px}
+  .row dt{color:var(--muted)}
+  .row dd{margin:0; font-variant-numeric:tabular-nums}
+  .price{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+  .unit{font-size:13px; font-weight:500; color:var(--muted)}
+  .meta{margin-top:8px; padding-top:8px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted)}
+
+  .tag{
+    display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700;
+    letter-spacing:.03em; border:1px solid currentColor;
+  }
+  .t-BORONG{color:var(--borong)} .t-RUNCIT{color:var(--runcit)} .t-LADANG{color:var(--ladang)}
+
+  .spread{display:flex; gap:12px; margin-top:8px}
+  .spread div{flex:1; background:var(--bg); border-radius:9px; padding:7px 9px; text-align:center}
+  .spread span{display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
+  .spread b{font-size:16px; font-variant-numeric:tabular-nums}
+
+  footer{margin-top:22px; font-size:12px; color:var(--muted); text-align:center; line-height:1.6}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>NuMIS · FAMA Preisabfrage</h1>
+  <p class="sub" id="head-sub">Daten werden geladen …</p>
+</header>
+
+<main>
+  <form class="panel" id="filters" autocomplete="off">
+    <div class="grid">
+      <div><label for="f-from">Von</label><input type="date" id="f-from"></div>
+      <div><label for="f-to">Bis</label><input type="date" id="f-to"></div>
+      <div class="wide"><label for="f-crop">Kultur</label><select id="f-crop"><option value="">Alle Kulturen</option></select></div>
+      <div><label for="f-level">Preisebene</label><select id="f-level"><option value="">Alle</option></select></div>
+      <div><label for="f-state">Bundesstaat</label><select id="f-state"><option value="">Alle</option></select></div>
+    </div>
+  </form>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tab-summary" role="tab" aria-selected="true" type="button">Übersicht</button>
+    <button class="tab" id="tab-rows" role="tab" aria-selected="false" type="button">Einzelwerte</button>
+  </div>
+
+  <div class="status" id="status">Bitte warten …</div>
+  <section id="results"></section>
+
+  <footer>
+    Quelle: FAMA Agri Market Insight · Preise in MYR<br>
+    Ladang = ab Hof · Borong = Großhandel · Runcit = Einzelhandel
+  </footer>
+</main>
+
+<script>
+const URL_BASE = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
+const KEY = "sb_publishable_9jDrv-WthtnBd3SY7C3BOQ_fgcEwmOD";
+
+const $ = id => document.getElementById(id);
+const statusEl = $("status"), resultsEl = $("results");
+let view = "summary", options = null, timer = null;
+
+async function rpc(name, body){
+  const res = await fetch(URL_BASE + name, {
+    method:"POST",
+    headers:{ "apikey":KEY, "Authorization":"Bearer "+KEY, "Content-Type":"application/json" },
+    body: JSON.stringify(body || {})
+  });
+  if(!res.ok) throw new Error("HTTP " + res.status + " – " + (await res.text()).slice(0,200));
+  return res.json();
+}
+
+const num = v => Number(v).toLocaleString("de-DE",{minimumFractionDigits:2, maximumFractionDigits:2});
+const day = s => new Date(s+"T00:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function fill(sel, values, label){
+  values.forEach(v => {
+    const o = document.createElement("option");
+    o.value = typeof v === "string" ? v : v.code;
+    o.textContent = typeof v === "string" ? v : v.name;
+    sel.appendChild(o);
+  });
+}
+
+function filters(){
+  return {
+    p_from:  $("f-from").value || null,
+    p_to:    $("f-to").value   || null,
+    p_crop:  $("f-crop").value || null,
+    p_level: $("f-level").value|| null,
+    p_state: $("f-state").value|| null
+  };
+}
+
+function renderSummary(rows){
+  if(!rows.length) return resultsEl.innerHTML = "";
+  resultsEl.innerHTML = rows.map(r => `
+    <article class="card">
+      <h3>${esc(r.crop_name)}</h3>
+      <div class="row">
+        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type || "–")}</span>
+        <span class="unit">${esc(r.n)} Werte · ${esc(r.unit)}</span>
+      </div>
+      <div class="spread">
+        <div><span>Min</span><b>${num(r.price_min)}</b></div>
+        <div><span>Ø</span><b>${num(r.price_avg)}</b></div>
+        <div><span>Max</span><b>${num(r.price_max)}</b></div>
+      </div>
+      <div class="meta">${day(r.first_date)} – ${day(r.last_date)}</div>
+    </article>`).join("");
+}
+
+function renderRows(rows){
+  if(!rows.length) return resultsEl.innerHTML = "";
+  resultsEl.innerHTML = rows.map(r => `
+    <article class="card">
+      <h3>${esc(r.crop_name)}</h3>
+      <div class="row">
+        <span class="price">${num(r.price)} <span class="unit">MYR / ${esc(r.unit)}</span></span>
+        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type || "–")}</span>
+      </div>
+      <dl class="row"><dt>Datum</dt><dd>${day(r.observation_date)}</dd></dl>
+      ${r.grade ? `<dl class="row"><dt>Güteklasse</dt><dd>${esc(r.grade)}</dd></dl>` : ""}
+      <div class="meta">
+        ${esc(r.market_name || "ohne Markt")}${r.district ? " · " + esc(r.district) : ""}${r.state ? " · " + esc(r.state) : ""}
+        ${r.sublevel ? "<br>" + esc(r.sublevel) : ""}
+      </div>
+    </article>`).join("");
+}
+
+async function query(){
+  statusEl.className = "status";
+  statusEl.textContent = "Lade …";
+  resultsEl.innerHTML = "";
+  try{
+    const f = filters();
+    if(view === "summary"){
+      const rows = await rpc("numis_price_summary", f);
+      renderSummary(rows);
+      statusEl.textContent = rows.length
+        ? rows.length + " Kombination(en) aus Kultur, Preisebene und Einheit"
+        : "Keine Daten für diese Auswahl.";
+    } else {
+      const rows = await rpc("numis_price_search", {...f, p_limit:200});
+      renderRows(rows);
+      statusEl.textContent = rows.length
+        ? rows.length + " Einzelwerte" + (rows.length === 200 ? " (auf 200 begrenzt – Zeitraum eingrenzen)" : "")
+        : "Keine Daten für diese Auswahl.";
+    }
+  }catch(err){
+    statusEl.className = "status err";
+    statusEl.textContent = "Fehler: " + err.message;
+  }
+}
+
+const debounce = () => { clearTimeout(timer); timer = setTimeout(query, 250); };
+
+function setView(v){
+  view = v;
+  $("tab-summary").setAttribute("aria-selected", v === "summary");
+  $("tab-rows").setAttribute("aria-selected", v === "rows");
+  query();
+}
+
+(async function init(){
+  try{
+    options = await rpc("numis_filter_options");
+    fill($("f-crop"), options.crops);
+    fill($("f-level"), options.levels);
+    fill($("f-state"), options.states);
+    // Standard: die letzten sieben erfassten Tage, nicht die letzten
+    // sieben Kalendertage - sonst ist die Ansicht nach einer Importpause leer.
+    const max = options.date_max, min = options.date_min;
+    const from = new Date(max + "T00:00:00");
+    from.setDate(from.getDate() - 6);
+    $("f-to").value   = max;
+    $("f-from").value = (from.toISOString().slice(0,10) < min) ? min : from.toISOString().slice(0,10);
+    $("f-from").min = $("f-to").min = min;
+    $("f-from").max = $("f-to").max = max;
+    $("head-sub").textContent =
+      Number(options.total).toLocaleString("de-DE") + " Preise · " + day(min) + " – " + day(max);
+    document.querySelectorAll("select,input").forEach(el => el.addEventListener("change", debounce));
+    $("tab-summary").onclick = () => setView("summary");
+    $("tab-rows").onclick    = () => setView("rows");
+    query();
+  }catch(err){
+    statusEl.className = "status err";
+    statusEl.textContent = "Verbindung fehlgeschlagen: " + err.message +
+      " – Falls die Seite direkt aus dem Dateisystem geöffnet wurde, bitte über einen lokalen Webserver aufrufen.";
+  }
+})();
+</script>
+</body>
+</html>

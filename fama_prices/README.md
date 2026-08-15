@@ -285,6 +285,30 @@ Der Loader fragt zuerst `numis_missing_days` und holt **nur** die offenen Tage. 
 erst als erledigt, wenn `finish` gelaufen ist – bricht ein Stapel ab, bleibt der Tag offen
 und wird beim nächsten Lauf vollständig wiederholt. Da alles Upserts sind, ist das gefahrlos.
 
+### Historie nachladen
+
+`numis_missing_days` macht das Nachladen beliebig wiederholbar – bricht ein Lauf ab, holt
+der nächste genau die offenen Tage. Deshalb ist ein großes Fenster ungefährlich. Wichtig ist
+nur `--delay`, damit FAMA nicht mit hunderten Anfragen in Folge belegt wird:
+
+```powershell
+python fama_to_numis.py --from 2025-01-01 --to 2026-08-08 --delay 2 --skip-lookups
+```
+
+`--skip-lookups` spart drei Anfragen je Lauf, sobald die Referenztabellen einmal aktuell
+sind. Bei ~590 Tagen dauert der Lauf mit 2 Sekunden Pause gut 30 Minuten.
+
+### Abfrage-Oberfläche
+
+`numis_preisabfrage.html` ist eine eigenständige Seite (keine externen Abhängigkeiten,
+mobil optimiert) für Zeitraum-, Kultur-, Ebenen- und Bundesstaat-Filter mit Übersicht
+(Min/Ø/Max je Kultur) und Einzelwerten.
+
+Sie liest über drei gekapselte Funktionen, die für `anon` freigegeben sind:
+`numis_filter_options()`, `numis_price_search(...)` und `numis_price_summary(...)`.
+Geprüft: `anon` kann darüber **nur lesen** – Import, Nachrechnen und der Direktzugriff auf
+`numis.price_observations` sind gesperrt. Der Schreibweg bleibt allein beim `service_role`.
+
 ### Täglich laufen lassen
 
 Windows: `run_fama_import.bat` (schreibt `fama_import.log`), einmalig einplanen mit
