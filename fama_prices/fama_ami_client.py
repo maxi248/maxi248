@@ -1,0 +1,405 @@
+#!/usr/bin/env python3
+"""
+fama_ami_client.py - Abruf der FAMA-AMI-Preisdaten.
+
+Die API wurde aus den App-Bundles von ami.fama.gov.my rekonstruiert
+(siehe README, Abschnitt "Die AMI-API"):
+
+  REST-Basis   https://ami.fama.gov.my/api/gen/      (zweite Instanz: /api2/gen/)
+  Aufrufform   GET <basis><tabelle>?filter=<spalte>,<op>,'<wert>'
+  Anmeldung    Keycloak, https://ami.fama.gov.my/kc/
+               Realm FAMA  + Client "webadmin"    (Web-App)
+               Realm AMI   + Client "respondent"  (AWAM-App)
+               Realm FAMA  + Client "mobilefama"  (Mobile-App)
+
+Die Preistabelle heisst "harga". commoditytype: D = harian (taeglich),
+W = mingguan (woechentlich). status: Hantar = eingereicht,
+Disemak = geprueft, Ditolak = abgelehnt.
+
+WICHTIG zum Passwort: Es wird nur zur Laufzeit abgefragt bzw. aus einer
+Umgebungsvariablen gelesen und ausschliesslich an den Keycloak-Server
+geschickt. Es wird nirgends gespeichert und steht in keiner Datei.
+
+Beispiele
+---------
+    # 1. Ohne Anmeldung testen, was offen erreichbar ist
+    python3 fama_ami_client.py probe
+
+    # 2. Anmelden und Referenztabellen holen
+    python3 fama_ami_client.py refs --user deine@mail.de
+
+    # 3. Tagespreise eines Zeitraums als CSV
+    python3 fama_ami_client.py prices --user deine@mail.de \
+        --from 2026-08-01 --to 2026-08-14 --out harga.csv
+
+    # 4. Beliebige Tabelle roh abrufen
+    python3 fama_ami_client.py table --user deine@mail.de \
+        --name refcommodity --out refcommodity.csv
+
+Passwort alternativ per Umgebungsvariable:
+    set FAMA_PASSWORD=...        (Windows)
+    export FAMA_PASSWORD=...     (Mac/Linux)
+
+Nur Standardbibliothek.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import getpass
+import gzip
+import json
+import os
+import ssl
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+from typing import Any
+
+ORIGIN = "https://ami.fama.gov.my"
+API = ORIGIN + "/api/gen/"
+API2 = ORIGIN + "/api2/gen/"
+KC = ORIGIN + "/kc"
+
+REALM_CLIENTS = [("FAMA", "webadmin"), ("AMI", "respondent"), ("FAMA", "mobilefama")]
+
+# Aus dem App-Bundle extrahierte Tabellen-/Sichtnamen.
+TABLES: dict[str, str] = {
+    # Preise
+    "harga": "harga",
+    "harga_harian": "harga?filter=commoditytype,eq,'D'",
+    "harga_mingguan": "harga?filter=commoditytype,eq,'W'",
+    "harga2h": "harga2h",
+    "harga2m": "harga2m",
+    "harga_old": "harga_old",
+    "monatsschnitt": "mv_mon_avg",
+    "monatsmedian": "mv_mon_med",
+    # Stammdaten
+    "refcommodity": "refcommodity",
+    "refcommodityvariety": "refcommodityvariety",
+    "refcommoditycategory": "refcommoditycategory",
+    "refcommoditygroup": "refcommoditygroup",
+    "refcommoditytype": "refcommoditytype",
+    "refgrade": "refgrade",
+    "refunit": "refunit",
+    "refcollectiontype": "refcollectiontype",
+    "reflevel": "reflevel",
+    "vclevel": "vclevel",
+    "vstate": "vstate",
+    "vdistrict": "vdistrict",
+    "pasarborong": "f_vpasarborong",
+    "refinstitution": "refinstitution",
+    # Berichte
+    "laporansegar": "smp.laporansegar",
+    "laporanperingkat": "smp.laporanperingkat",
+    "laporannegeri": "smp.laporannegeri",
+    "laporankategori": "smp.laporankategori",
+    "wartabarangan": "vwartabarangan",
+}
+
+REF_SET = ["refcommodity", "refcommodityvariety", "refcommoditycategory",
+           "refcommoditygroup", "refcommoditytype", "refgrade", "refunit",
+           "reflevel", "vstate", "vdistrict"]
+
+USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+              "(KHTML, like Gecko) Chrome/125.0 Safari/537.36")
+
+
+# --------------------------------------------------------------------------- HTTP
+
+def make_opener(insecure: bool):
+    ctx = ssl.create_default_context()
+    if insecure:
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+
+
+def request(op, url: str, token: str | None = None, data: bytes | None = None,
+            content_type: str | None = None, timeout: int = 60) -> dict[str, Any]:
+    headers = {"User-Agent": USER_AGENT, "Accept": "application/json",
+               "Accept-Encoding": "gzip", "Origin": ORIGIN, "Referer": ORIGIN + "/web/"}
+    if token:
+        headers["Authorization"] = "Bearer " + token
+    if content_type:
+        headers["Content-Type"] = content_type
+    out: dict[str, Any] = {"url": url}
+    try:
+        with op.open(urllib.request.Request(url, data=data, headers=headers), timeout=timeout) as r:
+            raw = r.read()
+            if r.headers.get("Content-Encoding") == "gzip":
+                try:
+                    raw = gzip.decompress(raw)
+                except OSError:
+                    pass
+            out.update(status=r.status, text=raw.decode("utf-8", errors="replace"))
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read(2000).decode("utf-8", errors="replace")
+        except Exception:
+            pass
+        out.update(status=e.code, error=f"HTTP {e.code} {e.reason}", text=body)
+    except Exception as e:
+        out.update(status=None, error=f"{type(e).__name__}: {e}", text="")
+    return out
+
+
+def as_json(res: dict[str, Any]) -> Any | None:
+    text = res.get("text") or ""
+    if not text.lstrip().startswith(("{", "[")):
+        return None
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+
+def rows_of(payload: Any) -> list[dict]:
+    """Vertraegt {"records":[...]}, {"data":[...]} und blanke Listen."""
+    if isinstance(payload, list):
+        return [r for r in payload if isinstance(r, dict)]
+    if isinstance(payload, dict):
+        for key in ("records", "data", "rows", "result"):
+            val = payload.get(key)
+            if isinstance(val, list):
+                return [r for r in val if isinstance(r, dict)]
+    return []
+
+
+# --------------------------------------------------------------------------- Auth
+
+def login(op, user: str, password: str, realm: str | None, client: str | None,
+          timeout: int) -> tuple[str | None, str]:
+    """Keycloak Direct-Access-Grant. Probiert die bekannten Realm/Client-Paare."""
+    pairs = [(realm, client)] if realm and client else REALM_CLIENTS
+    last = ""
+    for rlm, cli in pairs:
+        url = f"{KC}/realms/{urllib.parse.quote(rlm)}/protocol/openid-connect/token"
+        body = urllib.parse.urlencode({
+            "grant_type": "password", "client_id": cli,
+            "username": user, "password": password, "scope": "openid",
+        }).encode()
+        res = request(op, url, data=body,
+                      content_type="application/x-www-form-urlencoded", timeout=timeout)
+        payload = as_json(res) or {}
+        if res.get("status") == 200 and payload.get("access_token"):
+            print(f"  Anmeldung ok  (realm={rlm}, client={cli})")
+            return payload["access_token"], f"{rlm}/{cli}"
+        last = f"realm={rlm} client={cli} -> {res.get('status')} {payload.get('error_description') or payload.get('error') or res.get('error') or ''}"
+        print(f"  fehlgeschlagen: {last}")
+    return None, last
+
+
+def get_password(cli_value: str | None) -> str:
+    if cli_value:
+        return cli_value
+    env = os.environ.get("FAMA_PASSWORD")
+    if env:
+        return env
+    return getpass.getpass("AMI-Passwort (Eingabe bleibt unsichtbar): ")
+
+
+# --------------------------------------------------------------------------- API
+
+def fetch_table(op, endpoint: str, token: str | None, timeout: int,
+                page_size: int = 0, base: str = API, extra: str = "") -> list[dict]:
+    """Holt eine Tabelle, optional seitenweise (php-crud-api-Stil: ?page=n,size)."""
+    sep = "&" if "?" in endpoint else "?"
+    if not page_size:
+        url = base + endpoint + (sep + extra if extra else "")
+        res = request(op, url, token=token, timeout=timeout)
+        payload = as_json(res)
+        if payload is None:
+            raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: {(res.get('text') or '')[:200]}")
+        return rows_of(payload)
+
+    collected: list[dict] = []
+    page = 1
+    while True:
+        parts = [p for p in (extra, f"page={page},{page_size}") if p]
+        url = base + endpoint + sep + "&".join(parts)
+        res = request(op, url, token=token, timeout=timeout)
+        payload = as_json(res)
+        if payload is None:
+            raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: {(res.get('text') or '')[:200]}")
+        batch = rows_of(payload)
+        collected.extend(batch)
+        print(f"    Seite {page}: {len(batch)} Zeilen (gesamt {len(collected)})")
+        if len(batch) < page_size:
+            return collected
+        page += 1
+
+
+def write_csv(rows: list[dict], path: str) -> None:
+    if not rows:
+        print("  (keine Zeilen - keine Datei geschrieben)")
+        return
+    fields: list[str] = []
+    for row in rows:
+        for k in row:
+            if k not in fields:
+                fields.append(k)
+    with open(path, "w", newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    print(f"  geschrieben: {path}  ({len(rows):,} Zeilen, {len(fields)} Spalten)")
+
+
+# --------------------------------------------------------------------------- Befehle
+
+def cmd_probe(op, args) -> int:
+    """Testet ohne Anmeldung, was offen ist und was ein Token braucht."""
+    print("== Ohne Anmeldung testen\n")
+    targets = [API, API2, API + "harga?page=1,1", API + "refcommodity?page=1,1",
+               API + "reflevel", API + "vstate", API + "auth/menu"]
+    open_ok, need_auth = 0, 0
+    for url in targets:
+        res = request(op, url, timeout=args.timeout)
+        payload = as_json(res)
+        rows = rows_of(payload) if payload is not None else []
+        status = res.get("status")
+        if status == 200 and payload is not None:
+            open_ok += 1
+            if rows:
+                print(f"  OFFEN  200  {url}\n         Spalten: {sorted(rows[0])[:15]}")
+            else:
+                keys = sorted(payload)[:10] if isinstance(payload, dict) else f"array[{len(payload)}]"
+                print(f"  OFFEN  200  {url}\n         {keys}")
+        elif status in (401, 403):
+            need_auth += 1
+            print(f"  TOKEN  {status}  {url}   <- vorhanden, Anmeldung noetig")
+        else:
+            print(f"  {str(status or 'ERR'):>5}       {url}  {(res.get('text') or res.get('error') or '')[:90]}")
+    print(f"\n  offen: {open_ok}   anmeldepflichtig: {need_auth}")
+    print("\n  Beides ist ein verwertbares Ergebnis: 401/403 heisst, die Tabelle")
+    print("  existiert und ist mit deinem Konto abrufbar - dann 'refs' oder 'prices' nutzen.")
+    return 0
+
+
+def authenticate(op, args) -> str | None:
+    if not args.user:
+        print("Fehlt: --user (deine AMI-Anmeldeadresse)", file=sys.stderr)
+        return None
+    token, _ = login(op, args.user, get_password(args.password), args.realm, args.client, args.timeout)
+    if not token:
+        print("\nAnmeldung fehlgeschlagen. Moegliche Gruende:\n"
+              "  - Benutzername/Passwort falsch\n"
+              "  - dein Konto liegt in einem anderen Realm (--realm AMI --client respondent)\n"
+              "  - der Client erlaubt kein Direct-Access-Grant; dann bitte melden,\n"
+              "    dann bauen wir den Browser-Login-Weg (authorization_code).",
+              file=sys.stderr)
+    return token
+
+
+def cmd_refs(op, args) -> int:
+    token = authenticate(op, args)
+    if not token:
+        return 1
+    os.makedirs(args.outdir, exist_ok=True)
+    print()
+    for name in REF_SET:
+        endpoint = TABLES[name]
+        try:
+            rows = fetch_table(op, endpoint, token, args.timeout)
+        except RuntimeError as exc:
+            print(f"  {name}: Fehler {exc}")
+            continue
+        print(f"  {name}: {len(rows):,} Zeilen")
+        write_csv(rows, os.path.join(args.outdir, name + ".csv"))
+    return 0
+
+
+def cmd_prices(op, args) -> int:
+    token = authenticate(op, args)
+    if not token:
+        return 1
+    filters = []
+    if args.type:
+        filters.append(f"filter=commoditytype,eq,'{args.type}'")
+    if getattr(args, "from_"):
+        filters.append(f"filter=pricedate,ge,'{args.from_}'")
+    if args.to:
+        filters.append(f"filter=pricedate,le,'{args.to}'")
+    if args.status:
+        filters.append(f"filter=status,eq,'{args.status}'")
+    endpoint = "harga" + ("?" + "&".join(filters) if filters else "")
+    print(f"\n  Abruf: {API}{endpoint}")
+    try:
+        rows = fetch_table(op, endpoint, token, args.timeout, page_size=args.page_size)
+    except RuntimeError as exc:
+        print(f"  Fehler: {exc}", file=sys.stderr)
+        return 1
+    if rows:
+        print(f"  Spalten: {sorted(rows[0])}")
+    write_csv(rows, args.out)
+    return 0
+
+
+def cmd_table(op, args) -> int:
+    token = authenticate(op, args)
+    if not token:
+        return 1
+    endpoint = TABLES.get(args.name, args.name)
+    if args.filter:
+        sep = "&" if "?" in endpoint else "?"
+        endpoint += sep + "&".join(f"filter={f}" for f in args.filter)
+    print(f"\n  Abruf: {API}{endpoint}")
+    try:
+        rows = fetch_table(op, endpoint, token, args.timeout, page_size=args.page_size)
+    except RuntimeError as exc:
+        print(f"  Fehler: {exc}", file=sys.stderr)
+        return 1
+    if rows:
+        print(f"  Spalten: {sorted(rows[0])}")
+    write_csv(rows, args.out or (args.name.replace(".", "_") + ".csv"))
+    return 0
+
+
+def main() -> int:
+    # Gemeinsame Optionen, damit sie vor UND nach dem Unterbefehl stehen duerfen.
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument("--timeout", type=int, default=60)
+    common.add_argument("--insecure", action="store_true")
+
+    ap = argparse.ArgumentParser(description=__doc__, parents=[common],
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True, parser_class=lambda **kw: argparse.ArgumentParser(parents=[common], **kw))
+
+    def add_auth(p):
+        p.add_argument("--user", help="AMI-Anmeldeadresse (E-Mail)")
+        p.add_argument("--password", help="besser weglassen - wird sonst abgefragt")
+        p.add_argument("--realm", help="FAMA oder AMI (sonst werden beide probiert)")
+        p.add_argument("--client", help="webadmin | respondent | mobilefama")
+        p.add_argument("--page-size", type=int, default=1000, help="0 = alles auf einmal")
+
+    p = sub.add_parser("probe", help="ohne Anmeldung pruefen, was erreichbar ist")
+
+    p = sub.add_parser("refs", help="Referenz-/Stammdatentabellen als CSV")
+    add_auth(p)
+    p.add_argument("--outdir", default="fama_refs")
+
+    p = sub.add_parser("prices", help="Preistabelle 'harga' als CSV")
+    add_auth(p)
+    p.add_argument("--from", dest="from_", help="Startdatum JJJJ-MM-TT")
+    p.add_argument("--to", help="Enddatum JJJJ-MM-TT")
+    p.add_argument("--type", choices=["D", "W"], help="D = taeglich, W = woechentlich")
+    p.add_argument("--status", help="z.B. Disemak (geprueft)")
+    p.add_argument("--out", default="harga.csv")
+
+    p = sub.add_parser("table", help="beliebige Tabelle abrufen")
+    add_auth(p)
+    p.add_argument("--name", required=True, help=f"Kurzname oder roher Tabellenname. Bekannt: {', '.join(sorted(TABLES))}")
+    p.add_argument("--filter", action="append", help="z.B. --filter \"pricedate,eq,'2026-08-14'\"")
+    p.add_argument("--out")
+
+    args = ap.parse_args()
+    op = make_opener(args.insecure)
+    return {"probe": cmd_probe, "refs": cmd_refs, "prices": cmd_prices, "table": cmd_table}[args.cmd](op, args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -56,7 +56,66 @@ Landingpage, nicht aus echten Daten. Runde 2 hatte die SPA-Bundles außerdem nie
 weil deren relative Script-Pfade gegen `/awam` statt `/awam/` aufgelöst wurden.
 `probe_fama3.py` behebt beides.
 
-### Skripte
+### Die AMI-API (aus den App-Bundles rekonstruiert, Runde 3)
+
+Die Suche war erfolgreich. Die AMI-Apps sprechen mit einer generischen
+Datenbank-REST-API im Stil von *php-crud-api*:
+
+```
+Basis        https://ami.fama.gov.my/api/gen/       (zweite Instanz: /api2/gen/)
+Aufruf       GET <basis><tabelle>?filter=<spalte>,<operator>,'<wert>'
+Weitere      /api3/ , /api/ldap/ , /api/file/ , /api/generic/file/ , /api/spec/bulk/
+Auth-API     <basis>auth/menu , auth/permission , auth/report-permission  (?email=&type=)
+```
+
+Anmeldung über **Keycloak** unter `https://ami.fama.gov.my/kc/`:
+
+| App | Realm | Client |
+|---|---|---|
+| `/web` | `FAMA` | `webadmin` |
+| `/awam` | `AMI` | `respondent` |
+| `/mobile` | `FAMA` | `mobilefama` |
+
+Token-Endpunkt: `https://ami.fama.gov.my/kc/realms/<REALM>/protocol/openid-connect/token`.
+Beide Realms unterstützen laut OIDC-Discovery u. a. `password` (Direct Access Grant),
+`authorization_code` und `client_credentials`.
+
+Die wichtigsten Tabellen aus dem Bundle:
+
+| Zweck | Tabelle |
+|---|---|
+| **Preise (Kerndatensatz)** | `harga` |
+| Preise aufbereitet täglich / wöchentlich | `harga2h` / `harga2m` |
+| Altbestand | `harga_old` |
+| Monatsmittel / -median | `mv_mon_avg` / `mv_mon_med` |
+| Warenarten, Varietäten, Gruppen | `refcommodity`, `refcommodityvariety`, `refcommoditygroup`, `refcommoditycategory` |
+| Güteklassen, Einheiten, Preisebenen | `refgrade`, `refunit`, `reflevel`, `vclevel` |
+| Bundesstaaten, Distrikte | `vstate`, `vdistrict`, `mvdaerah` |
+| Großmärkte | `f_vpasarborong` |
+| Auswertungen | `smp.laporansegar`, `smp.laporanperingkat`, `smp.laporannegeri`, `smp.laporankategori` |
+
+Feldwerte in `harga`: `commoditytype` = `D` (harian/täglich) oder `W` (mingguan/wöchentlich);
+`status` = `Hantar` (eingereicht), `Disemak` (geprüft), `Ditolak` (abgelehnt);
+weitere Spalten u. a. `pricedate`, `commoditylevel` (Ladang/Borong/Runcit),
+`commodityvarietybm`, `gradecd`/`gradebm`, `sourceid`, `adminid`.
+
+Die `baseURL: "https://api.example.com"` im Bundle ist ein ungenutzter Quasar-Standardwert,
+keine echte Adresse – die realen Basis-URLs stehen im Modul `32554`.
+
+### Zugriff: `fama_ami_client.py`
+
+```bash
+python3 fama_ami_client.py probe                      # ohne Login: was ist offen?
+python3 fama_ami_client.py refs   --user <email>      # Stammdaten als CSV
+python3 fama_ami_client.py prices --user <email> --from 2026-08-01 --to 2026-08-14 --type D --out harga.csv
+python3 fama_ami_client.py table  --user <email> --name refcommodity
+```
+
+Das Passwort wird per `getpass` abgefragt oder aus `FAMA_PASSWORD` gelesen, nie gespeichert
+und ausschließlich an den Keycloak-Server geschickt. Findet das Skript den falschen Realm,
+lässt er sich mit `--realm AMI --client respondent` erzwingen.
+
+### Skripte im Überblick
 
 `probe_fama.py` (Runde 1) macht die Grunderkennung:
 
