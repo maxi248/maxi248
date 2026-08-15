@@ -60,7 +60,20 @@ from typing import Any
 
 # Wird von fama_to_numis.py geprueft. Hochzaehlen, sobald sich etwas an der
 # Signatur von fetch_table() oder am Abrufverhalten aendert.
-CLIENT_VERSION = 4
+CLIENT_VERSION = 5
+
+# Blaetter-Verfahren. 'offset' = &limit=N&offset=M, 'page' = &limit=N&page=P,
+# 'skip'/'start' analog zu offset. Mit dem Unterbefehl 'pagetest' ermitteln.
+PAGE_STYLE = "offset"
+
+
+class IncompleteResult(RuntimeError):
+    """Der Server hat sichtbar mehr Daten, liefert sie aber nicht heraus.
+
+    Wird ausgeloest, wenn das Blaettern nicht greift und deshalb nur die erste
+    Seite ankaeme. Ein unvollstaendiger Tag darf niemals als erledigt gelten -
+    lieber ein harter Fehler als still fehlende Preise.
+    """
 
 ORIGIN = "https://ami.fama.gov.my"
 API = ORIGIN + "/api/gen/"
@@ -220,7 +233,8 @@ def get_password(cli_value: str | None) -> str:
 # --------------------------------------------------------------------------- API
 
 def fetch_table(op, endpoint: str, token: str | None, timeout: int,
-                page_size: int = 0, base: str | None = None, quiet: bool = False) -> list[dict]:
+                page_size: int = 0, base: str | None = None, quiet: bool = False,
+                page_style: str | None = None, strict: bool = True) -> list[dict]:
     """Holt eine Tabelle seitenweise mit ?limit=&offset= (am System gemessen).
 
     Ohne 'limit' liefert der Server bei grossen Tabellen einen 502, weil er die
@@ -231,12 +245,19 @@ def fetch_table(op, endpoint: str, token: str | None, timeout: int,
     """
     base = base or API          # erst zur Laufzeit aufloesen, damit API ersetzbar bleibt
     limit = page_size or 1000
+    style = page_style or PAGE_STYLE
     collected: list[dict] = []
     offset = 0
     seen_first: set[str] = set()
     while True:
         sep = "&" if "?" in endpoint else "?"
-        url = f"{base}{endpoint}{sep}limit={limit}&offset={offset}"
+        if style == "page":
+            skip = f"page={offset // limit + 1}"
+        elif style == "none":
+            skip = ""
+        else:                                   # offset | skip | start
+            skip = f"{style}={offset}"
+        url = f"{base}{endpoint}{sep}limit={limit}" + (f"&{skip}" if skip else "")
         res = request(op, url, token=token, timeout=timeout)
         payload = as_json(res)
         if payload is None:
@@ -248,8 +269,12 @@ def fetch_table(op, endpoint: str, token: str | None, timeout: int,
 
         signature = json.dumps(batch[0], sort_keys=True, default=str)[:400]
         if signature in seen_first:
-            print("    !! 'offset' wird vom Server ignoriert - Abbruch, "
-                  "Ergebnis kann unvollstaendig sein")
+            msg = (f"Blaettern greift nicht: '{style}' wird vom Server ignoriert, "
+                   f"es kaeme nur die erste Seite ({len(collected):,} Zeilen) an. "
+                   f"Mit 'pagetest' das richtige Verfahren ermitteln.")
+            if strict:
+                raise IncompleteResult(msg)
+            print(f"    !! {msg}")
             return collected
         seen_first.add(signature)
 
@@ -259,6 +284,12 @@ def fetch_table(op, endpoint: str, token: str | None, timeout: int,
         if len(batch) < limit:
             return collected
         offset += limit
+        if style == "none":                     # ohne Blaettern gibt es nur eine Seite
+            if len(batch) == limit and strict:
+                raise IncompleteResult(
+                    f"Genau {limit:,} Zeilen zurueck - vermutlich abgeschnitten. "
+                    f"Hoeheres --page-size waehlen oder Blaettern aktivieren.")
+            return collected
 
 
 def write_csv(rows: list[dict], path: str) -> None:
@@ -381,6 +412,98 @@ def cmd_apitest(op, args) -> int:
     return 0
 
 
+def cmd_pagetest(op, args) -> int:
+    """Findet heraus, wie sich bei 'harga' ueber 1000 Zeilen hinaus blaettern laesst.
+
+    'apitest' hatte nur offset=0 bzw. page=1 geprueft - beides ist von
+    "Parameter wird ignoriert" nicht zu unterscheiden. Hier wird deshalb
+    wirklich uebersprungen und geschaut, ob sich der Inhalt aendert.
+    """
+    import datetime as _dt
+
+    day = args.date or (_dt.date.today() - _dt.timedelta(days=1)).isoformat()
+    day_filter = f"harga?filter=pricedate,eq,'{day}'"
+    print(f"== Testtag: {day}\n")
+
+    def ids(endpoint: str) -> tuple[int | None, list]:
+        res = request(op, API + endpoint, timeout=args.timeout)
+        rows = rows_of(as_json(res) or [])
+        return res.get("status"), [r.get("priceid") for r in rows]
+
+    st, base_ids = ids(day_filter + "&limit=10")
+    if not base_ids:
+        print(f"  Keine Daten fuer {day} (Status {st}). Mit --date einen anderen Tag waehlen.")
+        return 1
+    print(f"  Referenz (limit=10): {base_ids}\n")
+
+    print("== A. Ueberspringen: welcher Parameter wirkt wirklich?\n")
+    want = base_ids[5:] or base_ids[-1:]
+    working: list[str] = []
+    for label, suffix in [
+        ("offset=5", "&limit=5&offset=5"),
+        ("skip=5", "&limit=5&skip=5"),
+        ("start=5", "&limit=5&start=5"),
+        ("from=5", "&limit=5&from=5"),
+        ("page=2 (limit=5)", "&limit=5&page=2"),
+        ("page=2&per_page=5", "&per_page=5&page=2"),
+        ("offset=5&limit=5&order=priceid", "&limit=5&offset=5&order=priceid"),
+    ]:
+        st, got = ids(day_filter + suffix)
+        if not got:
+            print(f"  {label:<32} -> {st}  keine Zeilen")
+            continue
+        if got[0] == base_ids[0]:
+            print(f"  {label:<32} -> {st}  identisch mit Seite 1  (wirkungslos)")
+        elif got[0] in base_ids:
+            pos = base_ids.index(got[0])
+            print(f"  {label:<32} -> {st}  springt auf Position {pos}  <- WIRKT")
+            working.append(label)
+        else:
+            print(f"  {label:<32} -> {st}  andere Zeilen: {got[:3]}  <- WIRKT (ausserhalb Referenz)")
+            working.append(label)
+
+    print("\n== B. Wie gross darf 'limit' werden?\n")
+    max_rows = 0
+    for lim in (1000, 2000, 5000, 10000, 25000, 50000):
+        st, got = ids(day_filter + f"&limit={lim}")
+        n = len(got)
+        note = ""
+        if n == lim:
+            note = "  (genau ausgeschoepft - vermutlich mehr vorhanden)"
+        elif n < lim and n > 0:
+            note = "  <- vollstaendig, das ist die Tagesmenge"
+        print(f"  limit={lim:<6} -> {st}  {n:,} Zeilen{note}")
+        max_rows = max(max_rows, n)
+        if 0 < n < lim:
+            break
+        if st != 200:
+            break
+
+    print("\n== C. Vergleichsoperatoren (fuer Cursor ueber priceid)\n")
+    first = base_ids[0]
+    for op_name in ("gt", "gte", "ge", "lt", "le"):
+        st, got = ids(day_filter + f"&filter=priceid,{op_name},'{first}'&limit=5")
+        print(f"  priceid,{op_name:<4} -> {st}  {len(got)} Zeilen  {got[:3]}")
+
+    print("\n== D. Sortierung\n")
+    for label, suffix in [("order=priceid", "&order=priceid&limit=5"),
+                          ("sort=priceid", "&sort=priceid&limit=5"),
+                          ("orderby=priceid", "&orderby=priceid&limit=5"),
+                          ("order=priceid,desc", "&order=priceid,desc&limit=5")]:
+        st, got = ids(day_filter + suffix)
+        same = "wie Referenz" if got[:5] == base_ids[:5] else "andere Reihenfolge  <- WIRKT"
+        print(f"  {label:<22} -> {st}  {got[:3]}  {same}")
+
+    print("\n== Fazit")
+    if working:
+        print(f"  Blaettern moeglich ueber: {', '.join(working)}")
+    else:
+        print("  Kein Ueberspringen-Parameter wirkt.")
+        print(f"  Groesste Einzelantwort: {max_rows:,} Zeilen.")
+        print("  Dann ueber Filter zerlegen (Bundesstaat/Preisebene) statt blaettern.")
+    return 0
+
+
 def authenticate(op, args) -> str | None:
     """Anmeldung ist OPTIONAL - die Preistabellen sind offen erreichbar.
 
@@ -407,7 +530,8 @@ def cmd_refs(op, args) -> int:
         endpoint = TABLES[name]
         try:
             rows = fetch_table(op, endpoint, token, args.timeout,
-                               page_size=args.page_size, quiet=True)
+                               page_size=args.page_size, quiet=True,
+                               page_style=args.page_style)
         except RuntimeError as exc:
             print(f"  {name}: Fehler {exc}")
             continue
@@ -454,7 +578,8 @@ def cmd_prices(op, args) -> int:
             endpoint += "&" + "&".join(extra)
         try:
             rows = fetch_table(op, endpoint, token, args.timeout,
-                               page_size=args.page_size, quiet=True)
+                               page_size=args.page_size, quiet=True,
+                               page_style=args.page_style)
         except RuntimeError as exc:
             print(f"  {day}: Fehler {exc}")
             day += _dt.timedelta(days=1)
@@ -477,7 +602,8 @@ def cmd_table(op, args) -> int:
         endpoint += sep + "&".join(f"filter={f}" for f in args.filter)
     print(f"\n  Abruf: {API}{endpoint}")
     try:
-        rows = fetch_table(op, endpoint, token, args.timeout, page_size=args.page_size)
+        rows = fetch_table(op, endpoint, token, args.timeout, page_size=args.page_size,
+                           page_style=args.page_style)
     except RuntimeError as exc:
         print(f"  Fehler: {exc}", file=sys.stderr)
         return 1
@@ -506,11 +632,16 @@ def main() -> int:
         # grossen Tabellen die komplette Ausgabe und antwortet mit 502.
         p.add_argument("--page-size", type=int, default=1000,
                        help="Zeilen pro Anfrage (Standard 1000)")
+        p.add_argument("--page-style", choices=["offset", "page", "skip", "start", "none"],
+                       help="Blaetter-Verfahren (Standard: %s) - mit 'pagetest' ermitteln" % PAGE_STYLE)
 
     p = sub.add_parser("probe", help="ohne Anmeldung pruefen, was erreichbar ist")
 
     p = sub.add_parser("apitest", help="ohne Anmeldung: Blaetter-Syntax und offene Tabellen ermitteln")
     p.add_argument("--date", help="konkretes Datum JJJJ-MM-TT statt der letzten Tage")
+
+    p = sub.add_parser("pagetest", help="ermitteln, wie ueber 1000 Zeilen hinaus geblaettert wird")
+    p.add_argument("--date", help="Testtag JJJJ-MM-TT (Standard: gestern)")
 
     p = sub.add_parser("refs", help="Referenz-/Stammdatentabellen als CSV")
     add_auth(p)
@@ -533,8 +664,8 @@ def main() -> int:
 
     args = ap.parse_args()
     op = make_opener(args.insecure)
-    return {"probe": cmd_probe, "apitest": cmd_apitest, "refs": cmd_refs,
-            "prices": cmd_prices, "table": cmd_table}[args.cmd](op, args)
+    return {"probe": cmd_probe, "apitest": cmd_apitest, "pagetest": cmd_pagetest,
+            "refs": cmd_refs, "prices": cmd_prices, "table": cmd_table}[args.cmd](op, args)
 
 
 if __name__ == "__main__":

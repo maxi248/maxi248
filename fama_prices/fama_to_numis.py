@@ -45,13 +45,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-NEEDS_CLIENT = 4
+NEEDS_CLIENT = 5
 CLIENT_URL = ("https://raw.githubusercontent.com/maxi248/maxi248/refs/heads/"
               "claude/fama-malaysia-price-data-tu8qfj/fama_prices/fama_ami_client.py")
 
 try:
     import fama_ami_client
-    from fama_ami_client import fetch_table, make_opener
+    from fama_ami_client import fetch_table, make_opener, IncompleteResult
 except ImportError:
     print("fama_ami_client.py fehlt - bitte in denselben Ordner legen:\n  " + CLIENT_URL,
           file=sys.stderr)
@@ -125,9 +125,17 @@ def rpc(opener, name: str, payload: dict, key: str, timeout: int = 120):
     raise RuntimeError(last)
 
 
-def fetch_fama_day(opener, day: dt.date, timeout: int, page_size: int) -> list[dict]:
+def fetch_fama_day(opener, day: dt.date, timeout: int, page_size: int,
+                   page_style: str | None) -> list[dict]:
+    """Holt einen Tag vollstaendig.
+
+    Greift das Blaettern nicht, wirft fetch_table IncompleteResult. Das ist
+    Absicht: ein halber Tag darf nicht als geholt gelten, sonst fehlen fuer
+    immer Preise, ohne dass es auffaellt.
+    """
     endpoint = f"harga?filter=pricedate,eq,'{day.isoformat()}'"
-    return fetch_table(opener, endpoint, None, timeout, page_size=page_size, quiet=True)
+    return fetch_table(opener, endpoint, None, timeout, page_size=page_size,
+                       quiet=True, page_style=page_style, strict=True)
 
 
 def main() -> int:
@@ -139,6 +147,8 @@ def main() -> int:
     ap.add_argument("--to", help="Enddatum JJJJ-MM-TT (Standard: heute)")
     ap.add_argument("--timeout", type=int, default=90)
     ap.add_argument("--page-size", type=int, default=1000, help="Zeilen pro FAMA-Anfrage")
+    ap.add_argument("--page-style", choices=["offset", "page", "skip", "start", "none"],
+                    help="Blaetter-Verfahren; mit 'fama_ami_client.py pagetest' ermitteln")
     ap.add_argument("--dry-run", action="store_true",
                     help="Nur abrufen und zeigen, nichts in die Datenbank schreiben")
     ap.add_argument("--insecure", action="store_true")
@@ -174,7 +184,19 @@ def main() -> int:
     for day in days:
         print(f"{day}:")
         try:
-            rows = fetch_fama_day(opener, day, args.timeout, args.page_size)
+            rows = fetch_fama_day(opener, day, args.timeout, args.page_size, args.page_style)
+        except IncompleteResult as exc:
+            print(f"   UNVOLLSTAENDIG: {exc}")
+            print("   Tag wird NICHT als geholt vermerkt.")
+            failed.append(day.isoformat())
+            if not args.dry_run:
+                try:
+                    rpc(opener, "numis_ingest_fama_finish",
+                        {"p_date": day.isoformat(), "p_raw": 0, "p_obs": 0,
+                         "p_error": f"unvollstaendig: {exc}"[:500]}, key)
+                except RuntimeError:
+                    pass
+            continue
         except Exception as exc:
             print(f"   FAMA-Abruf fehlgeschlagen: {type(exc).__name__}: {exc}")
             failed.append(day.isoformat())
