@@ -163,8 +163,13 @@
 const RPC = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
 const KEY = "sb_publishable_9jDrv-WthtnBd3SY7C3BOQ_fgcEwmOD";
 
+/* Freigabe dieser Fassung. Wird das Token serverseitig gesperrt, verlieren
+   ALLE Kopien dieser Datei sofort den Zugriff - auch weitergegebene. */
+const VERSION = "2026.08.r1";
+const TOKEN   = "numis-2026-08-r1-8f3ac21d";
+
 const I18N = {
-  de:{ locale:"de-DE", title:"NuMIS · FAMA Preisabfrage",
+  de:{ blockedTitle:"Zugriff gesperrt", blockedDefault:"Diese Fassung der Seite ist nicht mehr freigeschaltet.", unknownDefault:"Diese Fassung ist nicht freigeschaltet.", blockedHint:"Bitte fordere die aktuelle Fassung an.", version:"Fassung", locale:"de-DE", title:"NuMIS · FAMA Preisabfrage",
     from:"Von", to:"Bis", level:"Preisebene", crop:"Sorte", category:"Warengruppe",
     state:"Bundesstaat", more:"Weitere Filter", market:"Markt / Pasar", district:"Distrikt",
     sublevel:"Marktart", grade:"Güteklasse", unit:"Einheit", status:"Status",
@@ -183,7 +188,7 @@ const I18N = {
     foot:"Quelle: FAMA Agri Market Insight · Preise in MYR<br>LADANG = ab Hof · BORONG = Großhandel · RUNCIT = Einzelhandel",
     err:"Fehler: ", conn:"Verbindung fehlgeschlagen: ",
     connHint:" – Wurde die Seite direkt aus dem Dateisystem geöffnet, bitte über einen lokalen Webserver aufrufen." },
-  en:{ locale:"en-GB", title:"NuMIS · FAMA Price Query",
+  en:{ blockedTitle:"Access blocked", blockedDefault:"This version of the page is no longer enabled.", unknownDefault:"This version is not enabled.", blockedHint:"Please request the current version.", version:"Version", locale:"en-GB", title:"NuMIS · FAMA Price Query",
     from:"From", to:"To", level:"Price level", crop:"Commodity", category:"Category",
     state:"State", more:"More filters", market:"Market / Pasar", district:"District",
     sublevel:"Market type", grade:"Grade", unit:"Unit", status:"Status",
@@ -202,7 +207,7 @@ const I18N = {
     foot:"Source: FAMA Agri Market Insight · prices in MYR<br>LADANG = farm gate · BORONG = wholesale · RUNCIT = retail",
     err:"Error: ", conn:"Connection failed: ",
     connHint:" – If the page was opened directly from the file system, please serve it over a local web server." },
-  ms:{ locale:"ms-MY", title:"NuMIS · Harga FAMA",
+  ms:{ blockedTitle:"Akses disekat", blockedDefault:"Versi halaman ini tidak lagi diaktifkan.", unknownDefault:"Versi ini tidak diaktifkan.", blockedHint:"Sila minta versi terkini.", version:"Versi", locale:"ms-MY", title:"NuMIS · Harga FAMA",
     from:"Dari", to:"Hingga", level:"Peringkat harga", crop:"Komoditi", category:"Kategori",
     state:"Negeri", more:"Penapis lanjutan", market:"Pasar", district:"Daerah",
     sublevel:"Jenis pasar", grade:"Gred", unit:"Unit", status:"Status",
@@ -247,10 +252,12 @@ let lang = localStorage.getItem("numis-lang") || "de";
 let T = I18N[lang], view = "series", opts = null;
 
 async function call(name, body){
+  const payload = Object.assign({}, body || {});
+  if(name !== "numis_client_check") payload.p_token = TOKEN;
   const r = await fetch(RPC + name, {
     method:"POST",
     headers:{apikey:KEY, Authorization:"Bearer "+KEY, "Content-Type":"application/json"},
-    body: JSON.stringify(body || {})
+    body: JSON.stringify(payload)
   });
   if(!r.ok) throw new Error("HTTP "+r.status+" – "+(await r.text()).slice(0,200));
   return r.json();
@@ -441,7 +448,7 @@ function applyLang(){
   document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent = T[el.dataset.t]; });
   $("t-title").textContent = T.title;
   $("f-text").placeholder = T.placeholder;
-  $("foot").innerHTML = T.foot;
+  $("foot").innerHTML = T.foot + "<br>" + T.version + ": " + VERSION;
   document.querySelectorAll(".lang button").forEach(b=>
     b.setAttribute("aria-pressed", String(b.dataset.lang===lang)));
   // Erste Option jeder Liste ist "Alle/All/Semua".
@@ -462,6 +469,24 @@ function applyLang(){
   }
 }
 
+function showBlocked(info){
+  // Die Seite kann sich NICHT selbst von der Festplatte loeschen - das
+  // verhindert jeder Browser. Sie kann aber ihre eigenen gespeicherten Daten
+  // verwerfen und jede Anzeige verweigern. Die Sperre wirkt ohnehin
+  // serverseitig: ohne Freigabe liefert die Datenbank nichts.
+  try{ localStorage.removeItem("numis-lang"); }catch(e){}
+  const msg = (info && (info["message_"+lang] || info.message_de))
+    || (info && info.status === "BLOCKED" ? T.blockedDefault : T.unknownDefault);
+  document.querySelector("main").innerHTML =
+    `<div class="panel" style="text-align:center; padding:28px 18px">
+       <h2 style="margin:0 0 8px; font-size:19px">${esc(T.blockedTitle)}</h2>
+       <p style="margin:0 0 6px">${esc(msg)}</p>
+       <p class="unit" style="margin:0">${esc(T.blockedHint)}</p>
+       <p class="unit" style="margin-top:14px">${esc(T.version)}: ${esc(VERSION)}</p>
+     </div>`;
+  document.getElementById("head-sub").textContent = T.blockedTitle;
+}
+
 (async function init(){
   applyLang();
   document.querySelectorAll(".lang button").forEach(b=>b.onclick = ()=>{
@@ -469,6 +494,11 @@ function applyLang(){
     applyLang(); run();
   });
   try{
+    // Freigabe zuerst pruefen, damit eine Sperre erklaert wird statt als
+    // technischer Fehler zu erscheinen.
+    const rel = await call("numis_client_check", {p_token: TOKEN});
+    if(!rel || rel.status !== "ACTIVE"){ showBlocked(rel); return; }
+
     opts = await call("numis_filter_options");
     refill($("f-state"), opts.states.slice().sort());
     const max=opts.date_max, min=opts.date_min;

@@ -195,6 +195,39 @@ bedeutungslos, da sie offen sind.
   credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
   aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
 
+### Zugangssteuerung der ausgegebenen Seite
+
+Jede ausgegebene HTML-Fassung trägt ein **Freigabe-Token**. Alle Lesefunktionen prüfen es
+über `numis.assert_client()`; ohne gültiges Token liefert die Datenbank **nichts**.
+
+```sql
+-- sperren  (wirkt sofort, auch für bereits weitergegebene Kopien)
+update numis.client_releases set status='BLOCKED', blocked_at=now()
+where token='numis-2026-08-r1-8f3ac21d';
+
+-- wieder freigeben
+update numis.client_releases set status='ACTIVE', blocked_at=null
+where token='numis-2026-08-r1-8f3ac21d';
+
+-- neue Fassung freischalten
+insert into numis.client_releases (token, version, note)
+values ('numis-2026-09-r2-<zufall>', '2026.09.r2', 'zweite Testrunde');
+```
+
+Die Seite fragt beim Start `numis_client_check()` ab und zeigt bei Sperre einen
+erklärenden Hinweis statt einer technischen Fehlermeldung; die Meldung ist je Fassung in
+`message_de/_en/_ms` hinterlegt.
+
+**Kein Selbstlöschmechanismus möglich.** Eine Webseite kann keine Datei vom Rechner des
+Betrachters löschen – das unterbindet jeder Browser ausnahmslos. Die Seite verwirft bei
+Sperre lediglich ihre eigenen gespeicherten Einstellungen und verweigert jede Anzeige.
+Wirksam ist allein die serverseitige Sperre, und die ist der Löschung überlegen: Sie
+erfasst auch Kopien, die weitergegeben, umbenannt oder gesichert wurden.
+
+**Grenze:** Der Publishable-Key und das Token stehen im Quelltext der Seite. Wer technisch
+versiert ist, kann die API damit direkt ansprechen, solange das Token gültig ist. Genau das
+beendet die Sperre – sie entzieht beiden gemeinsam die Wirkung.
+
 ### Abfrage-Oberfläche: Sprachen
 
 `numis_preisabfrage.html` schaltet oben rechts zwischen **DE / EN / BM** um (gemerkt in
