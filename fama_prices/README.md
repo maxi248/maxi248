@@ -102,6 +102,21 @@ weitere Spalten u. a. `pricedate`, `commoditylevel` (Ladang/Borong/Runcit),
 Die `baseURL: "https://api.example.com"` im Bundle ist ein ungenutzter Quasar-Standardwert,
 keine echte Adresse – die realen Basis-URLs stehen im Modul `32554`.
 
+**Gemessen am laufenden System (Runde 4):**
+
+- Ein Teil der API ist **ohne jede Anmeldung** offen: `reflevel` und `vstate` liefern
+  direkt Daten (`reflevel` u. a. mit `levelcd`, `levelbm`, `levelen`, `levelactive`,
+  `parentlevelcd`, `order`, `icon`).
+- Die Engine ist **nicht** php-crud-api: die App setzt Filterwerte in Anführungszeichen
+  (`filter=adminid,eq,'X'`), was php-crud-api nicht tut. Entsprechend ist auch dessen
+  Blätter-Syntax `?page=n,size` falsch – sie erzeugt am Server einen **502 Bad Gateway**.
+  `fama_ami_client.py apitest` ermittelt die tatsächlich akzeptierte Begrenzung, indem es
+  gängige Varianten (`limit`, `offset`, `size`, `page&limit` …) gegen die offene Tabelle
+  `reflevel` durchprobiert und prüft, ob die Zeilenzahl wirklich sinkt.
+- Keycloak antwortet auf den Passwort-Login mit `invalid_grant` („Invalid user
+  credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
+  aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
+
 ### Zugriff: `fama_ami_client.py`
 
 ```bash

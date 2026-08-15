@@ -188,8 +188,19 @@ def login(op, user: str, password: str, realm: str | None, client: str | None,
         if res.get("status") == 200 and payload.get("access_token"):
             print(f"  Anmeldung ok  (realm={rlm}, client={cli})")
             return payload["access_token"], f"{rlm}/{cli}"
-        last = f"realm={rlm} client={cli} -> {res.get('status')} {payload.get('error_description') or payload.get('error') or res.get('error') or ''}"
-        print(f"  fehlgeschlagen: {last}")
+
+        code = payload.get("error", "")
+        desc = payload.get("error_description") or res.get("error") or ""
+        # Die Fehlerkennung sagt genau, WO das Problem liegt.
+        hint = {
+            "invalid_grant": "Benutzername oder Passwort stimmt nicht (Zugangsweg selbst ist offen)",
+            "unauthorized_client": "dieser Client erlaubt kein Passwort-Login -> Browser-Login noetig",
+            "invalid_client": "Client-ID unbekannt in diesem Realm",
+            "invalid_request": "Anfrage unvollstaendig",
+        }.get(code, "")
+        last = f"{rlm}/{cli}: {res.get('status')} {code} {desc}"
+        print(f"  fehlgeschlagen: realm={rlm} client={cli} -> {res.get('status')} "
+              f"{code}: {desc}" + (f"\n                  = {hint}" if hint else ""))
     return None, last
 
 
@@ -254,8 +265,9 @@ def write_csv(rows: list[dict], path: str) -> None:
 def cmd_probe(op, args) -> int:
     """Testet ohne Anmeldung, was offen ist und was ein Token braucht."""
     print("== Ohne Anmeldung testen\n")
-    targets = [API, API2, API + "harga?page=1,1", API + "refcommodity?page=1,1",
-               API + "reflevel", API + "vstate", API + "auth/menu"]
+    # Kein '?page=n,size': diese Syntax loest am Server einen 502 aus.
+    targets = [API, API2, API + "reflevel", API + "vstate", API + "refcommodity",
+               API + "refgrade", API + "auth/menu"]
     open_ok, need_auth = 0, 0
     for url in targets:
         res = request(op, url, timeout=args.timeout)
@@ -277,6 +289,78 @@ def cmd_probe(op, args) -> int:
     print(f"\n  offen: {open_ok}   anmeldepflichtig: {need_auth}")
     print("\n  Beides ist ein verwertbares Ergebnis: 401/403 heisst, die Tabelle")
     print("  existiert und ist mit deinem Konto abrufbar - dann 'refs' oder 'prices' nutzen.")
+    return 0
+
+
+def cmd_apitest(op, args) -> int:
+    """Ermittelt OHNE Anmeldung die richtige Abruf-Syntax und was offen ist.
+
+    Hintergrund: '?page=1,1' loest am Server einen 502 aus. Die Blaettersyntax
+    dieser API ist also eine andere - hier wird sie an einer bekannt offenen,
+    kleinen Tabelle (reflevel) durchprobiert.
+    """
+    import datetime as _dt
+
+    def probe_url(endpoint: str, token: str | None = None) -> tuple[Any, int, list[str]]:
+        res = request(op, API + endpoint, token=token, timeout=args.timeout)
+        payload = as_json(res)
+        rows = rows_of(payload) if payload is not None else []
+        cols = sorted(rows[0]) if rows else []
+        return res.get("status"), len(rows), cols
+
+    print("== A. Blaetter-Syntax an der offenen Tabelle 'reflevel' ermitteln\n")
+    base_status, base_n, base_cols = probe_url("reflevel")
+    print(f"  ohne Parameter          -> {base_status}  {base_n} Zeilen")
+    if base_cols:
+        print(f"     Spalten: {base_cols}")
+
+    variants = ["?limit=3", "?_limit=3", "?size=3", "?take=3", "?top=3",
+                "?per_page=3", "?page=1&size=3", "?page=1&limit=3",
+                "?offset=0&limit=3", "?page=1,3", "?start=0&count=3"]
+    working: list[str] = []
+    for v in variants:
+        st, n, _ = probe_url("reflevel" + v)
+        mark = ""
+        if st == 200 and base_n and n == 3:
+            working.append(v)
+            mark = "   <- begrenzt korrekt auf 3"
+        elif st != 200:
+            mark = "   (Fehler)"
+        elif n == base_n:
+            mark = "   (Parameter wird ignoriert)"
+        print(f"  {v:<22} -> {st}  {n} Zeilen{mark}")
+
+    limit_syntax = working[0] if working else ""
+    print(f"\n  Ergebnis: " + (f"funktionierende Begrenzung = {working}"
+                               if working else "keine Begrenzung erkannt, Tabellen kommen komplett"))
+
+    print("\n== B. Preistabelle 'harga' mit Datumsfilter (ohne Blaettern)\n")
+    today = _dt.date.today()
+    dates = [args.date] if args.date else [
+        (today - _dt.timedelta(days=d)).isoformat() for d in (1, 2, 3, 7, 14)]
+    for d in dates:
+        ep = f"harga?filter=pricedate,eq,'{d}'"
+        if limit_syntax:
+            ep += "&" + limit_syntax.lstrip("?")
+        st, n, cols = probe_url(ep)
+        print(f"  {d}  -> {st}  {n} Zeilen")
+        if cols:
+            print(f"     Spalten: {cols}")
+            break
+
+    print("\n== C. Weitere Tabellen ohne Anmeldung\n")
+    others = ["refcommodity", "refgrade", "refunit", "refcommodityvariety",
+              "refcommoditycategory", "vdistrict", "f_vpasarborong",
+              "harga2h", "harga2m", "mv_mon_avg", "smp.laporansegar"]
+    for name in others:
+        ep = name + (("?" + limit_syntax.lstrip("?")) if limit_syntax else "")
+        st, n, cols = probe_url(ep)
+        flag = "OFFEN" if st == 200 and n else ("TOKEN" if st in (401, 403) else "     ")
+        print(f"  {flag} {str(st):>4}  {name:<24} {n} Zeilen")
+        if cols:
+            print(f"        Spalten: {cols[:14]}")
+    print("\n  Hinweis: 'harga' ohne jeden Filter wird bewusst nicht abgerufen -")
+    print("  die Tabelle ist gross und der Server antwortet dann mit 502.")
     return 0
 
 
@@ -374,9 +458,15 @@ def main() -> int:
         p.add_argument("--password", help="besser weglassen - wird sonst abgefragt")
         p.add_argument("--realm", help="FAMA oder AMI (sonst werden beide probiert)")
         p.add_argument("--client", help="webadmin | respondent | mobilefama")
-        p.add_argument("--page-size", type=int, default=1000, help="0 = alles auf einmal")
+        # 0 = kein Blaettern. Die Syntax '?page=n,size' loest hier einen 502 aus,
+        # deshalb ist Blaettern standardmaessig aus; passende Syntax via 'apitest'.
+        p.add_argument("--page-size", type=int, default=0,
+                       help="0 = ohne Blaettern (Standard, da die Server-Syntax abweicht)")
 
     p = sub.add_parser("probe", help="ohne Anmeldung pruefen, was erreichbar ist")
+
+    p = sub.add_parser("apitest", help="ohne Anmeldung: Blaetter-Syntax und offene Tabellen ermitteln")
+    p.add_argument("--date", help="konkretes Datum JJJJ-MM-TT statt der letzten Tage")
 
     p = sub.add_parser("refs", help="Referenz-/Stammdatentabellen als CSV")
     add_auth(p)
@@ -398,7 +488,8 @@ def main() -> int:
 
     args = ap.parse_args()
     op = make_opener(args.insecure)
-    return {"probe": cmd_probe, "refs": cmd_refs, "prices": cmd_prices, "table": cmd_table}[args.cmd](op, args)
+    return {"probe": cmd_probe, "apitest": cmd_apitest, "refs": cmd_refs,
+            "prices": cmd_prices, "table": cmd_table}[args.cmd](op, args)
 
 
 if __name__ == "__main__":
