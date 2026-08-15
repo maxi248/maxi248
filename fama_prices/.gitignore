@@ -1,0 +1,13 @@
+# Arbeitsergebnisse und Diagnosedateien - gehoeren nicht ins Repo
+*.csv
+*.log
+fama_probe_report.json
+fama_probe2_report.json
+fama_probe3_report.json
+fama_snapshots/
+fama_bundles/
+fama_refs/
+
+# Zugangsdaten haben hier ohnehin nichts zu suchen
+.env
+*.key

@@ -159,6 +159,72 @@ Das Passwort wird per `getpass` abgefragt oder aus `FAMA_PASSWORD` gelesen, nie 
 und ausschließlich an den Keycloak-Server geschickt. Findet das Skript den falschen Realm,
 lässt er sich mit `--realm AMI --client respondent` erzwingen.
 
+## NuMIS: täglicher Import in Supabase
+
+Zielprojekt **NuMIS** (`otumcdmymenwiliwzrhj`, Schema `numis`). Die Quelle `FAMA_AMI` war
+dort bereits angelegt; `crops`, `markets`, `raw_source_records` und `price_observations`
+waren leer.
+
+### Was am Schema ergänzt wurde
+
+```sql
+-- Wiederholbarkeit (ON CONFLICT-Ziele)
+raw_source_records_source_external_uidx  (source_id, external_record_id)  UNIQUE
+price_observations_source_record_uidx    (source_id, source_record_id)    UNIQUE
+-- Abfrage-Indizes für die spätere PWA
+price_observations (observation_date, crop_id) / (source_id, observation_date) / (market_id, observation_date)
+raw_source_records (source_id, observed_at)
+-- Lauf-Protokoll
+numis.ingest_runs (source_id, target_date, status, raw_rows, observation_rows, …)
+```
+
+`ingest_runs` war nicht ausdrücklich bestellt, ist aber die Voraussetzung fürs Nachladen:
+Ohne Protokoll ließe sich ein Tag, an dem es **wirklich keine Daten gab** (Feiertag), nicht
+von einem Tag unterscheiden, der **nie geholt wurde** – er würde endlos erneut abgefragt.
+Status `EMPTY` löst das.
+
+### Serverseitige Import-Logik (Postgres-Funktionen)
+
+| Funktion | Zweck |
+|---|---|
+| `public.numis_ingest_fama_batch(date, jsonb)` | Legt fehlende `crops`/`markets` an, sichert Rohzeilen, schreibt Beobachtungen – alles per Upsert |
+| `public.numis_ingest_fama_finish(date, int, int, text)` | Schließt den Tag ab (`OK` / `EMPTY` / `ERROR`) |
+| `public.numis_missing_days(from, to)` | Liefert die noch offenen Tage – steuert das Nachladen |
+
+Alle drei sind `SECURITY DEFINER` und **nur für `service_role` ausführbar**; für `anon`
+und `authenticated` wurde `EXECUTE` entzogen. Sie liegen in `public`, weil das Schema
+`numis` nicht über die Data-API exponiert ist.
+
+Feldzuordnung, Statusabbildung (`Disemak`/`Disahkan` → `VALIDATED`, `Ditolak` → `REJECTED`,
+sonst `RAW`) und Schlüsselbildung (`fama_crop_code`, `fama_market_code`) stecken vollständig
+in den Funktionen – der Client bleibt dumm und ist damit leicht austauschbar.
+
+### Loader benutzen
+
+```bash
+set NUMIS_SERVICE_KEY=<service-role-key>     # Windows, einmalig: setx …
+python fama_to_numis.py                      # letzte 7 Tage prüfen und nachholen
+python fama_to_numis.py --days 30
+python fama_to_numis.py --from 2026-07-01 --to 2026-07-31
+python fama_to_numis.py --days 7 --dry-run   # nur abrufen, nichts schreiben
+```
+
+Der Loader fragt zuerst `numis_missing_days` und holt **nur** die offenen Tage. Ein Tag gilt
+erst als erledigt, wenn `finish` gelaufen ist – bricht ein Stapel ab, bleibt der Tag offen
+und wird beim nächsten Lauf vollständig wiederholt. Da alles Upserts sind, ist das gefahrlos.
+
+### Täglich laufen lassen
+
+Windows: `run_fama_import.bat` (schreibt `fama_import.log`), einmalig einplanen mit
+
+```
+schtasks /create /tn "NuMIS FAMA Import" /tr "C:\Users\carst\Downloads\run_fama_import.bat" /sc daily /st 07:30 /f
+```
+
+Mac/Linux: `30 7 * * * cd /pfad/zu/fama_prices && NUMIS_SERVICE_KEY=… python3 fama_to_numis.py --days 7 >> fama_import.log 2>&1`
+
+Einmal täglich genügt – FAMA aktualisiert die Tagespreise nicht häufiger.
+
 ### Skripte im Überblick
 
 `probe_fama.py` (Runde 1) macht die Grunderkennung:
