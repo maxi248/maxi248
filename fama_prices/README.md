@@ -195,6 +195,27 @@ bedeutungslos, da sie offen sind.
   credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
   aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
 
+### Abfrage-Oberfläche: Sprachen
+
+`numis_preisabfrage.html` schaltet oben rechts zwischen **DE / EN / BM** um (gemerkt in
+`localStorage`). Übersetzt werden:
+
+- **Bedienoberfläche** – vollständig, je Sprache eine Textliste in der Datei.
+- **Fachbegriffe aus den Daten** (Preisebene, Güteklasse, Einheit, Marktart) – Englisch
+  kommt aus FAMAs eigenen Referenztabellen (`name_en` in `numis.fama_code_lookup`),
+  Deutsch aus einer festen Liste in der HTML-Datei, da es sich um einen kleinen,
+  geschlossenen Satz handelt.
+- **Sortennamen** – Malaiisch aus den Preisdaten, Englisch aus `refcommodityvariety`
+  (`numis_sync_fama_varieties`). Weicht der englische Name ab, steht der malaiische
+  klein darunter – am Markt zählt der malaiische Name.
+
+Unbrauchbare Übersetzungen werden verworfen: FAMA gibt als englische Entsprechung von
+`PREMIUM` nur `P` an; eine Ein-Buchstaben-Übersetzung ist schlechter als das Original,
+deshalb bleibt dort der malaiische Begriff stehen.
+
+Markt-, Distrikt- und Bundesstaatsnamen bleiben in allen Sprachen im Original – sie sind
+Eigennamen.
+
 ### Zugriff: `fama_ami_client.py`
 
 ```bash

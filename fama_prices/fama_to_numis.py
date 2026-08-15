@@ -173,6 +173,18 @@ def sync_lookups(opener, key: str, args) -> None:
     in price_observations.
     """
     print("Referenztabellen abgleichen:")
+    # Sortenkatalog zuerst: liefert die englischen Sortennamen, die in den
+    # Preisdaten selbst nicht enthalten sind.
+    try:
+        rows = fetch_table(opener, "refcommodityvariety", None, args.timeout,
+                           page_size=args.page_size, quiet=True,
+                           page_style=args.page_style, strict=True)
+        res = rpc(opener, "numis_sync_fama_varieties", {"p_rows": rows}, key)
+        print(f"   {'refcommodityvariety':<20} {len(rows):>5} Zeilen -> "
+              f"{res.get('sorten_gesamt')} Sorten, {res.get('mit_englisch')} mit englischem Namen")
+    except (RuntimeError, IncompleteResult) as exc:
+        print(f"   {'refcommodityvariety':<20} FEHLER: {exc}")
+
     for kind, table in LOOKUPS:
         try:
             rows = fetch_table(opener, table, None, args.timeout,
@@ -180,9 +192,9 @@ def sync_lookups(opener, key: str, args) -> None:
                                page_style=args.page_style, strict=True)
             n = rpc(opener, "numis_sync_fama_lookup",
                     {"p_kind": kind, "p_rows": rows}, key)
-            print(f"   {table:<10} {len(rows):>4} Zeilen -> {n} uebernommen")
+            print(f"   {table:<20} {len(rows):>5} Zeilen -> {n} uebernommen")
         except (RuntimeError, IncompleteResult) as exc:
-            print(f"   {table:<10} FEHLER: {exc}")
+            print(f"   {table:<20} FEHLER: {exc}")
             print("   Ohne diese Tabelle bleiben Codes stehen statt Klartext.")
     print()
 

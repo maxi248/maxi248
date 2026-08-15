@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>NuMIS – FAMA Preisabfrage</title>
+<title>NuMIS – FAMA</title>
 <style>
   :root{
     --bg:#f6f7f5; --card:#fff; --ink:#16211c; --muted:#5d6b64; --line:#dfe4e0;
@@ -25,13 +25,22 @@
   html,body{margin:0;padding:0}
   body{background:var(--bg); color:var(--ink); -webkit-text-size-adjust:100%;
     font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    padding-bottom:calc(24px + env(safe-area-inset-bottom));}
-  header{padding:16px 16px 12px; background:var(--card); border-bottom:1px solid var(--line);
-    position:sticky; top:0; z-index:20}
-  h1{margin:0; font-size:18px; letter-spacing:-.01em}
-  .sub{margin:3px 0 0; font-size:12.5px; color:var(--muted)}
-  main{max-width:1000px; margin:0 auto; padding:12px}
+    padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+  header{padding:14px 14px 11px; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20; display:flex; align-items:flex-start; gap:10px}
+  .htext{flex:1; min-width:0}
+  h1{margin:0; font-size:17px; letter-spacing:-.01em}
+  .sub{margin:3px 0 0; font-size:12px; color:var(--muted)}
 
+  .lang{display:flex; gap:0; border:1px solid var(--line); border-radius:9px;
+    overflow:hidden; flex:none}
+  .lang button{min-width:38px; min-height:34px; padding:0 6px; border:0; cursor:pointer;
+    background:var(--card); color:var(--muted); font-size:12px; font-weight:700;
+    letter-spacing:.03em}
+  .lang button+button{border-left:1px solid var(--line)}
+  .lang button[aria-pressed=true]{background:var(--accent); color:#fff}
+
+  main{max-width:1000px; margin:0 auto; padding:12px}
   .panel{background:var(--card); border:1px solid var(--line); border-radius:14px;
     padding:12px; box-shadow:var(--shadow)}
   .grid{display:grid; gap:9px; grid-template-columns:1fr}
@@ -50,7 +59,7 @@
   .more>summary{cursor:pointer; font-size:13.5px; font-weight:600; color:var(--accent);
     padding:8px 2px; list-style:none}
   .more>summary::-webkit-details-marker{display:none}
-  .more>summary::before{content:"▸ "; }
+  .more>summary::before{content:"▸ "}
   .more[open]>summary::before{content:"▾ "}
 
   .btnrow{display:flex; gap:8px; margin-top:10px}
@@ -68,7 +77,8 @@
 
   .card{background:var(--card); border:1px solid var(--line); border-radius:12px;
     padding:12px 13px; margin-bottom:9px; box-shadow:var(--shadow)}
-  .card h3{margin:0 0 8px; font-size:15px; line-height:1.3; letter-spacing:-.01em}
+  .card h3{margin:0; font-size:15px; line-height:1.3; letter-spacing:-.01em}
+  .alt{margin:1px 0 8px; font-size:12px; color:var(--muted)}
   .row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13.5px}
   .row+.row{margin-top:3px}
   .price{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
@@ -76,7 +86,7 @@
   .meta{margin-top:8px; padding-top:8px; border-top:1px solid var(--line);
     font-size:12.5px; color:var(--muted)}
   .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px;
-    font-weight:700; letter-spacing:.03em; border:1px solid currentColor}
+    font-weight:700; letter-spacing:.03em; border:1px solid currentColor; white-space:nowrap}
   .t-BORONG{color:var(--c-BORONG)} .t-RUNCIT{color:var(--c-RUNCIT)} .t-LADANG{color:var(--c-LADANG)}
 
   .spread{display:flex; gap:10px; margin-top:8px}
@@ -86,7 +96,7 @@
 
   .chartwrap{background:var(--card); border:1px solid var(--line); border-radius:12px;
     padding:12px 8px 8px; box-shadow:var(--shadow); margin-bottom:10px}
-  svg{display:block; width:100%; height:auto; touch-action:pan-y}
+  svg{display:block; width:100%; height:auto}
   .legend{display:flex; flex-wrap:wrap; gap:10px; padding:8px 6px 2px; font-size:12.5px}
   .legend i{display:inline-block; width:12px; height:3px; border-radius:2px; margin-right:5px;
     vertical-align:middle}
@@ -96,63 +106,145 @@
 <body>
 
 <header>
-  <h1>NuMIS · FAMA Preisabfrage</h1>
-  <p class="sub" id="head-sub">Daten werden geladen …</p>
+  <div class="htext">
+    <h1 id="t-title">NuMIS · FAMA</h1>
+    <p class="sub" id="head-sub">…</p>
+  </div>
+  <div class="lang" role="group" aria-label="Sprache">
+    <button type="button" data-lang="de" aria-pressed="true">DE</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    <button type="button" data-lang="ms" aria-pressed="false">BM</button>
+  </div>
 </header>
 
 <main>
   <form class="panel" id="filters" autocomplete="off" onsubmit="return false">
     <div class="grid">
-      <div><label for="f-from">Von</label><input type="date" id="f-from"></div>
-      <div><label for="f-to">Bis</label><input type="date" id="f-to"></div>
-      <div><label for="f-level">Preisebene</label><select id="f-level"><option value="">Alle</option></select></div>
-      <div class="wide"><label for="f-crop">Sorte</label><select id="f-crop"><option value="">Alle Sorten</option></select></div>
-      <div><label for="f-category">Warengruppe</label><select id="f-category"><option value="">Alle</option></select></div>
-      <div><label for="f-state">Bundesstaat</label><select id="f-state"><option value="">Alle</option></select></div>
+      <div><label for="f-from" data-t="from"></label><input type="date" id="f-from"></div>
+      <div><label for="f-to" data-t="to"></label><input type="date" id="f-to"></div>
+      <div><label for="f-level" data-t="level"></label><select id="f-level"><option value=""></option></select></div>
+      <div class="wide"><label for="f-crop" data-t="crop"></label><select id="f-crop"><option value=""></option></select></div>
+      <div><label for="f-category" data-t="category"></label><select id="f-category"><option value=""></option></select></div>
+      <div><label for="f-state" data-t="state"></label><select id="f-state"><option value=""></option></select></div>
     </div>
 
     <details class="more">
-      <summary>Weitere Filter</summary>
+      <summary data-t="more"></summary>
       <div class="grid" style="margin-top:8px">
-        <div class="wide"><label for="f-market">Markt / Pasar</label><select id="f-market"><option value="">Alle Märkte</option></select></div>
-        <div><label for="f-district">Distrikt</label><select id="f-district"><option value="">Alle</option></select></div>
-        <div><label for="f-sublevel">Marktart</label><select id="f-sublevel"><option value="">Alle</option></select></div>
-        <div><label for="f-grade">Güteklasse</label><select id="f-grade"><option value="">Alle</option></select></div>
-        <div><label for="f-unit">Einheit</label><select id="f-unit"><option value="">Alle</option></select></div>
-        <div><label for="f-status">Status</label><select id="f-status"><option value="">Alle</option></select></div>
-        <div class="wide"><label for="f-text">Freitext (Sorte, Markt, Distrikt, Bundesstaat, Marktart)</label>
-          <input type="search" id="f-text" placeholder="z. B. TIMUN, PASAR TANI, KOTA BHARU"></div>
+        <div class="wide"><label for="f-market" data-t="market"></label><select id="f-market"><option value=""></option></select></div>
+        <div><label for="f-district" data-t="district"></label><select id="f-district"><option value=""></option></select></div>
+        <div><label for="f-sublevel" data-t="sublevel"></label><select id="f-sublevel"><option value=""></option></select></div>
+        <div><label for="f-grade" data-t="grade"></label><select id="f-grade"><option value=""></option></select></div>
+        <div><label for="f-unit" data-t="unit"></label><select id="f-unit"><option value=""></option></select></div>
+        <div><label for="f-status" data-t="status"></label><select id="f-status"><option value=""></option></select></div>
+        <div class="wide"><label for="f-text" data-t="freetext"></label>
+          <input type="search" id="f-text"></div>
       </div>
     </details>
 
     <div class="btnrow">
-      <button type="button" class="btn" id="btn-reset">Zurücksetzen</button>
-      <button type="button" class="btn primary" id="btn-go">Abfragen</button>
+      <button type="button" class="btn" id="btn-reset" data-t="reset"></button>
+      <button type="button" class="btn primary" id="btn-go" data-t="go"></button>
     </div>
   </form>
 
   <div class="tabs" role="tablist">
-    <button class="tab" id="tab-series"  role="tab" type="button" aria-selected="true">Verlauf</button>
-    <button class="tab" id="tab-summary" role="tab" type="button" aria-selected="false">Übersicht</button>
-    <button class="tab" id="tab-rows"    role="tab" type="button" aria-selected="false">Einzelwerte</button>
+    <button class="tab" id="tab-series"  role="tab" type="button" aria-selected="true"  data-t="tabSeries"></button>
+    <button class="tab" id="tab-summary" role="tab" type="button" aria-selected="false" data-t="tabSummary"></button>
+    <button class="tab" id="tab-rows"    role="tab" type="button" aria-selected="false" data-t="tabRows"></button>
   </div>
 
-  <div class="status" id="status">Bitte warten …</div>
+  <div class="status" id="status">…</div>
   <section id="results"></section>
-
-  <footer>
-    Quelle: FAMA Agri Market Insight · Preise in MYR<br>
-    LADANG = ab Hof · BORONG = Großhandel · RUNCIT = Einzelhandel
-  </footer>
+  <footer id="foot"></footer>
 </main>
 
 <script>
 const RPC = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
 const KEY = "sb_publishable_9jDrv-WthtnBd3SY7C3BOQ_fgcEwmOD";
 
+const I18N = {
+  de:{ locale:"de-DE", title:"NuMIS · FAMA Preisabfrage",
+    from:"Von", to:"Bis", level:"Preisebene", crop:"Sorte", category:"Warengruppe",
+    state:"Bundesstaat", more:"Weitere Filter", market:"Markt / Pasar", district:"Distrikt",
+    sublevel:"Marktart", grade:"Güteklasse", unit:"Einheit", status:"Status",
+    freetext:"Freitext (Sorte, Markt, Distrikt, Bundesstaat, Marktart)",
+    placeholder:"z. B. TIMUN, PASAR TANI, KOTA BHARU",
+    all:"Alle", reset:"Zurücksetzen", go:"Abfragen",
+    tabSeries:"Verlauf", tabSummary:"Übersicht", tabRows:"Einzelwerte",
+    loading:"Lade …", none:"Keine Daten für diese Auswahl.",
+    min:"Min", avg:"Ø", max:"Max", start:"Start Ø", end:"Ende Ø", change:"Änderung",
+    values:"Werte", days:"Tage", date:"Datum", noMarket:"ohne Markt",
+    prices:"Preise", crops:"Sorten", markets:"Märkte",
+    chartHint:"Linie = Tagesdurchschnitt · Fläche = Spanne Min–Max",
+    seriesInfo:d=>`${d} Tag(e) im Verlauf – bei nur einem Tag lohnt die Übersicht mehr.`,
+    sumInfo:n=>`${n} Kombination(en) aus Sorte, Preisebene und Einheit`,
+    rowInfo:(n,c)=>`${n} Einzelwerte${c?" (auf 200 begrenzt – Filter enger fassen)":""}`,
+    foot:"Quelle: FAMA Agri Market Insight · Preise in MYR<br>LADANG = ab Hof · BORONG = Großhandel · RUNCIT = Einzelhandel",
+    err:"Fehler: ", conn:"Verbindung fehlgeschlagen: ",
+    connHint:" – Wurde die Seite direkt aus dem Dateisystem geöffnet, bitte über einen lokalen Webserver aufrufen." },
+  en:{ locale:"en-GB", title:"NuMIS · FAMA Price Query",
+    from:"From", to:"To", level:"Price level", crop:"Commodity", category:"Category",
+    state:"State", more:"More filters", market:"Market / Pasar", district:"District",
+    sublevel:"Market type", grade:"Grade", unit:"Unit", status:"Status",
+    freetext:"Free text (commodity, market, district, state, market type)",
+    placeholder:"e.g. TIMUN, PASAR TANI, KOTA BHARU",
+    all:"All", reset:"Reset", go:"Search",
+    tabSeries:"Trend", tabSummary:"Overview", tabRows:"Records",
+    loading:"Loading …", none:"No data for this selection.",
+    min:"Min", avg:"Avg", max:"Max", start:"Start avg", end:"End avg", change:"Change",
+    values:"values", days:"days", date:"Date", noMarket:"no market",
+    prices:"prices", crops:"commodities", markets:"markets",
+    chartHint:"Line = daily average · Band = min–max range",
+    seriesInfo:d=>`${d} day(s) in the trend – with a single day the overview is more useful.`,
+    sumInfo:n=>`${n} combination(s) of commodity, price level and unit`,
+    rowInfo:(n,c)=>`${n} records${c?" (capped at 200 – narrow the filters)":""}`,
+    foot:"Source: FAMA Agri Market Insight · prices in MYR<br>LADANG = farm gate · BORONG = wholesale · RUNCIT = retail",
+    err:"Error: ", conn:"Connection failed: ",
+    connHint:" – If the page was opened directly from the file system, please serve it over a local web server." },
+  ms:{ locale:"ms-MY", title:"NuMIS · Harga FAMA",
+    from:"Dari", to:"Hingga", level:"Peringkat harga", crop:"Komoditi", category:"Kategori",
+    state:"Negeri", more:"Penapis lanjutan", market:"Pasar", district:"Daerah",
+    sublevel:"Jenis pasar", grade:"Gred", unit:"Unit", status:"Status",
+    freetext:"Carian bebas (komoditi, pasar, daerah, negeri, jenis pasar)",
+    placeholder:"cth. TIMUN, PASAR TANI, KOTA BHARU",
+    all:"Semua", reset:"Set semula", go:"Cari",
+    tabSeries:"Aliran", tabSummary:"Ringkasan", tabRows:"Rekod",
+    loading:"Memuatkan …", none:"Tiada data untuk pilihan ini.",
+    min:"Min", avg:"Purata", max:"Maks", start:"Purata mula", end:"Purata akhir", change:"Perubahan",
+    values:"nilai", days:"hari", date:"Tarikh", noMarket:"tiada pasar",
+    prices:"harga", crops:"komoditi", markets:"pasar",
+    chartHint:"Garis = purata harian · Kawasan = julat min–maks",
+    seriesInfo:d=>`${d} hari dalam aliran – untuk satu hari sahaja, ringkasan lebih berguna.`,
+    sumInfo:n=>`${n} gabungan komoditi, peringkat harga dan unit`,
+    rowInfo:(n,c)=>`${n} rekod${c?" (dihadkan kepada 200 – tapis dengan lebih tepat)":""}`,
+    foot:"Sumber: FAMA Agri Market Insight · harga dalam MYR<br>LADANG · BORONG · RUNCIT",
+    err:"Ralat: ", conn:"Sambungan gagal: ",
+    connHint:" – Jika halaman dibuka terus dari sistem fail, sila gunakan pelayan web tempatan." }
+};
+
+/* Fachbegriffe aus den Daten. Englisch kommt aus den FAMA-Referenztabellen
+   (opts.en), Deutsch aus dieser festen Liste - die malaiischen Begriffe sind
+   ein geschlossener, kleiner Satz. */
+const DE_TERMS = {
+  LADANG:"Ab Hof", BORONG:"Großhandel", RUNCIT:"Einzelhandel",
+  KILOGRAM:"Kilogramm", BIJI:"Stück", IKAT:"Bund", TANGKAI:"Stiel",
+  TONGKOL:"Kolben", KOTAK:"Karton", PEKET:"Packung",
+  "TIADA GRED":"ohne Klasse", PREMIUM:"Premium",
+  "PASAR TANI":"Bauernmarkt", "KILANG BELIAN":"Aufkaufbetrieb",
+  "PASAR BORONG / PUSAT PEMBORONGAN":"Großmarkt",
+  "RUNCIT - PASAR AWAM / PUSAT PERUNCITAN":"Einzelhandel – öffentlicher Markt",
+  "RUNCIT - MYFARM OUTLET (MFO)":"Einzelhandel – MyFarm-Outlet",
+  "RUNCIT - OUTLET BUAH BERMUSIM":"Einzelhandel – Saisonobst-Outlet",
+  "BORONG - OUTLET BUAH BERMUSIM":"Großhandel – Saisonobst-Outlet",
+  "LADANG - BELIAN PO":"Ab Hof – Aufkauf",
+  VALIDATED:"geprüft", RAW:"ungeprüft", REJECTED:"abgelehnt"
+};
+
 const $ = id => document.getElementById(id);
 const statusEl = $("status"), resultsEl = $("results");
-let view = "series", opts = null;
+let lang = localStorage.getItem("numis-lang") || "de";
+let T = I18N[lang], view = "series", opts = null;
 
 async function call(name, body){
   const r = await fetch(RPC + name, {
@@ -163,24 +255,36 @@ async function call(name, body){
   if(!r.ok) throw new Error("HTTP "+r.status+" – "+(await r.text()).slice(0,200));
   return r.json();
 }
-const num  = v => Number(v).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
-const day  = s => new Date(s+"T00:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"});
-const esc  = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const num = v => Number(v).toLocaleString(T.locale,{minimumFractionDigits:2,maximumFractionDigits:2});
+const int = v => Number(v).toLocaleString(T.locale);
+const day = s => new Date(s+"T00:00:00").toLocaleDateString(T.locale,{day:"2-digit",month:"2-digit",year:"2-digit"});
+const esc = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const colour = t => ["BORONG","RUNCIT","LADANG"].includes(t) ? `var(--c-${t})` : "var(--c-other)";
 
-function opt(sel, value, text){
-  const o = document.createElement("option");
-  o.value = value; o.textContent = text; sel.appendChild(o);
+/* Datenwert in die aktuelle Sprache bringen. Unbekanntes bleibt im Original. */
+function term(v){
+  if(v == null) return "";
+  if(lang === "ms") return v;
+  if(lang === "de") return DE_TERMS[v] || (opts && opts.en && opts.en[v]) || v;
+  return (opts && opts.en && opts.en[v]) || v;
 }
-function refill(sel, items, keep){
-  const cur = keep ? sel.value : "";
+const cropName = (ms, en) => (lang === "ms" || !en) ? ms : en;
+const cropAlt  = (ms, en) => (lang === "ms" || !en || en === ms) ? "" : ms;
+
+function opt(sel, value, text){
+  const o = document.createElement("option"); o.value = value; o.textContent = text; sel.appendChild(o);
+}
+function refill(sel, items, translate){
+  const cur = sel.value;
   sel.length = 1;
-  items.forEach(i => typeof i === "string" ? opt(sel,i,i) : opt(sel,i.code,i.name));
-  if(cur && [...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  items.forEach(i => typeof i === "string"
+    ? opt(sel, i, translate ? term(i) : i)
+    : opt(sel, i.code, i.name));
+  if(cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
 }
 
 function filters(){
-  const f = {
+  return {
     p_from:$("f-from").value||null, p_to:$("f-to").value||null,
     p_crop:$("f-crop").value||null, p_category:$("f-category").value||null,
     p_level:$("f-level").value||null, p_sublevel:$("f-sublevel").value||null,
@@ -189,20 +293,16 @@ function filters(){
     p_unit:$("f-unit").value||null, p_status:$("f-status").value||null,
     p_text:$("f-text").value.trim()||null
   };
-  return f;
 }
 
-/* ---------- Verlauf: eine Linie je Preisebene und Einheit ---------- */
 function renderSeries(rows){
   if(!rows.length){ resultsEl.innerHTML=""; return; }
-
   const groups = new Map();
-  rows.forEach(r => {
-    const k = r.price_type + " · " + r.unit;
-    if(!groups.has(k)) groups.set(k, {label:k, type:r.price_type, pts:[]});
+  rows.forEach(r=>{
+    const k = r.price_type+"|"+r.unit;
+    if(!groups.has(k)) groups.set(k,{type:r.price_type, unit:r.unit, pts:[]});
     groups.get(k).pts.push(r);
   });
-  // Nur die belastbarsten Reihen zeichnen, sonst wird es unlesbar.
   const series = [...groups.values()]
     .sort((a,b)=>b.pts.reduce((s,p)=>s+Number(p.n),0)-a.pts.reduce((s,p)=>s+Number(p.n),0))
     .slice(0,5);
@@ -211,119 +311,115 @@ function renderSeries(rows){
   const xi = new Map(dates.map((d,i)=>[d,i]));
   const vals = series.flatMap(s=>s.pts.flatMap(p=>[Number(p.price_min),Number(p.price_max)]));
   let lo = Math.min(...vals), hi = Math.max(...vals);
-  if(hi === lo){ hi = lo + 1; lo = Math.max(0, lo - 1); }
-  const pad = (hi-lo)*0.08; lo = Math.max(0, lo-pad); hi = hi+pad;
+  if(hi===lo){ hi = lo+1; lo = Math.max(0,lo-1); }
+  const pad=(hi-lo)*0.08; lo=Math.max(0,lo-pad); hi=hi+pad;
 
-  const W=760, H=320, L=46, R=12, T=14, B=42;
+  const W=760,H=320,L=48,R=12,TT=14,B=42;
   const px = i => L + (dates.length<2 ? (W-L-R)/2 : i*(W-L-R)/(dates.length-1));
-  const py = v => T + (H-T-B) * (1 - (v-lo)/(hi-lo));
+  const py = v => TT + (H-TT-B)*(1-(v-lo)/(hi-lo));
 
-  const ticks = 4, gridLines = [], yLabels = [];
-  for(let i=0;i<=ticks;i++){
-    const v = lo + (hi-lo)*i/ticks, y = py(v);
-    gridLines.push(`<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`);
-    yLabels.push(`<text x="${L-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${num(v)}</text>`);
+  let grid="", ylab="";
+  for(let i=0;i<=4;i++){
+    const v=lo+(hi-lo)*i/4, y=py(v);
+    grid += `<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}" stroke="var(--grid)"/>`;
+    ylab += `<text x="${L-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${num(v)}</text>`;
   }
-  const step = Math.max(1, Math.ceil(dates.length/6));
-  const xLabels = dates.map((d,i)=> i%step ? "" :
+  const step=Math.max(1,Math.ceil(dates.length/6));
+  const xlab = dates.map((d,i)=> i%step ? "" :
     `<text x="${px(i).toFixed(1)}" y="${H-B+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${day(d)}</text>`).join("");
 
   const paths = series.map(s=>{
-    const pts = s.pts.slice().sort((a,b)=>a.observation_date<b.observation_date?-1:1);
-    const band = pts.map(p=>`${px(xi.get(p.observation_date)).toFixed(1)},${py(Number(p.price_max)).toFixed(1)}`)
-      .concat(pts.slice().reverse().map(p=>`${px(xi.get(p.observation_date)).toFixed(1)},${py(Number(p.price_min)).toFixed(1)}`))
-      .join(" ");
-    const line = pts.map((p,i)=>`${i?"L":"M"}${px(xi.get(p.observation_date)).toFixed(1)} ${py(Number(p.price_avg)).toFixed(1)}`).join(" ");
-    const dots = pts.map(p=>`<circle cx="${px(xi.get(p.observation_date)).toFixed(1)}" cy="${py(Number(p.price_avg)).toFixed(1)}" r="2.6" fill="${colour(s.type)}"/>`).join("");
+    const p = s.pts.slice().sort((a,b)=>a.observation_date<b.observation_date?-1:1);
+    const band = p.map(x=>`${px(xi.get(x.observation_date)).toFixed(1)},${py(Number(x.price_max)).toFixed(1)}`)
+      .concat(p.slice().reverse().map(x=>`${px(xi.get(x.observation_date)).toFixed(1)},${py(Number(x.price_min)).toFixed(1)}`)).join(" ");
+    const line = p.map((x,i)=>`${i?"L":"M"}${px(xi.get(x.observation_date)).toFixed(1)} ${py(Number(x.price_avg)).toFixed(1)}`).join(" ");
+    const dots = p.map(x=>`<circle cx="${px(xi.get(x.observation_date)).toFixed(1)}" cy="${py(Number(x.price_avg)).toFixed(1)}" r="2.6" fill="${colour(s.type)}"/>`).join("");
     return `<polygon points="${band}" fill="${colour(s.type)}" opacity=".12"/>
             <path d="${line}" fill="none" stroke="${colour(s.type)}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
   }).join("");
 
-  const legend = series.map(s=>
-    `<span><i style="background:${colour(s.type)}"></i>${esc(s.label)}</span>`).join("");
-
   resultsEl.innerHTML = `
     <div class="chartwrap">
-      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Preisverlauf">
-        ${gridLines.join("")}${yLabels.join("")}${xLabels}
-        <line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="var(--line)"/>
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T.tabSeries)}">
+        ${grid}${ylab}${xlab}
+        <line x1="${L}" y1="${TT}" x2="${L}" y2="${H-B}" stroke="var(--line)"/>
         <line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="var(--line)"/>
         ${paths}
       </svg>
-      <div class="legend">${legend}</div>
-      <div class="legend" style="color:var(--muted)">Linie = Tagesdurchschnitt · Fläche = Spanne Min–Max</div>
+      <div class="legend">${series.map(s=>
+        `<span><i style="background:${colour(s.type)}"></i>${esc(term(s.type))} · ${esc(term(s.unit))}</span>`).join("")}</div>
+      <div class="legend" style="color:var(--muted)">${esc(T.chartHint)}</div>
     </div>` +
     series.map(s=>{
       const n = s.pts.reduce((a,p)=>a+Number(p.n),0);
-      const first = s.pts[0], last = s.pts[s.pts.length-1];
-      const diff = Number(last.price_avg) - Number(first.price_avg);
-      const pct = Number(first.price_avg) ? (100*diff/Number(first.price_avg)) : 0;
+      const a = s.pts[0], b = s.pts[s.pts.length-1];
+      const pct = Number(a.price_avg) ? 100*(Number(b.price_avg)-Number(a.price_avg))/Number(a.price_avg) : 0;
       return `<article class="card">
-        <h3>${esc(s.label)}</h3>
-        <div class="row"><span class="unit">${n.toLocaleString("de-DE")} Werte · ${s.pts.length} Tage</span>
-          <span class="tag t-${esc(s.type)}">${esc(s.type)}</span></div>
+        <h3>${esc(term(s.type))} · ${esc(term(s.unit))}</h3>
+        <div class="row"><span class="unit">${int(n)} ${esc(T.values)} · ${s.pts.length} ${esc(T.days)}</span>
+          <span class="tag t-${esc(s.type)}">${esc(term(s.type))}</span></div>
         <div class="spread">
-          <div><span>Start Ø</span><b>${num(first.price_avg)}</b></div>
-          <div><span>Ende Ø</span><b>${num(last.price_avg)}</b></div>
-          <div><span>Änderung</span><b>${diff>=0?"+":"−"}${num(Math.abs(pct))} %</b></div>
+          <div><span>${esc(T.start)}</span><b>${num(a.price_avg)}</b></div>
+          <div><span>${esc(T.end)}</span><b>${num(b.price_avg)}</b></div>
+          <div><span>${esc(T.change)}</span><b>${pct>=0?"+":"−"}${num(Math.abs(pct))} %</b></div>
         </div>
-        <div class="meta">${day(first.observation_date)} – ${day(last.observation_date)}</div>
+        <div class="meta">${day(a.observation_date)} – ${day(b.observation_date)}</div>
       </article>`;
     }).join("");
 }
 
 function renderSummary(rows){
-  resultsEl.innerHTML = rows.map(r=>`
-    <article class="card">
-      <h3>${esc(r.crop_name)}</h3>
-      <div class="row"><span class="tag t-${esc(r.price_type)}">${esc(r.price_type||"–")}</span>
-        <span class="unit">${Number(r.n).toLocaleString("de-DE")} Werte · ${esc(r.unit)} · ${r.tage} Tage</span></div>
+  resultsEl.innerHTML = rows.map(r=>{
+    const alt = cropAlt(r.crop_name, r.crop_name_en);
+    return `<article class="card">
+      <h3>${esc(cropName(r.crop_name, r.crop_name_en))}</h3>
+      ${alt?`<p class="alt">${esc(alt)}</p>`:'<div style="height:8px"></div>'}
+      <div class="row"><span class="tag t-${esc(r.price_type)}">${esc(term(r.price_type))}</span>
+        <span class="unit">${int(r.n)} ${esc(T.values)} · ${esc(term(r.unit))} · ${r.tage} ${esc(T.days)}</span></div>
       <div class="spread">
-        <div><span>Min</span><b>${num(r.price_min)}</b></div>
-        <div><span>Ø</span><b>${num(r.price_avg)}</b></div>
-        <div><span>Max</span><b>${num(r.price_max)}</b></div>
+        <div><span>${esc(T.min)}</span><b>${num(r.price_min)}</b></div>
+        <div><span>${esc(T.avg)}</span><b>${num(r.price_avg)}</b></div>
+        <div><span>${esc(T.max)}</span><b>${num(r.price_max)}</b></div>
       </div>
       <div class="meta">${day(r.first_date)} – ${day(r.last_date)}</div>
-    </article>`).join("");
+    </article>`;
+  }).join("");
 }
 
 function renderRows(rows){
-  resultsEl.innerHTML = rows.map(r=>`
-    <article class="card">
-      <h3>${esc(r.crop_name)}</h3>
-      <div class="row"><span class="price">${num(r.price)} <span class="unit">MYR / ${esc(r.unit)}</span></span>
-        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type||"–")}</span></div>
-      <div class="row"><span class="unit">Datum</span><span>${day(r.observation_date)}</span></div>
-      ${r.grade?`<div class="row"><span class="unit">Güteklasse</span><span>${esc(r.grade)}</span></div>`:""}
-      <div class="meta">${esc(r.market_name||"ohne Markt")}${r.district?" · "+esc(r.district):""}${r.state?" · "+esc(r.state):""}
-        ${r.sublevel?"<br>"+esc(r.sublevel):""}</div>
-    </article>`).join("");
+  resultsEl.innerHTML = rows.map(r=>{
+    const alt = cropAlt(r.crop_name, r.crop_name_en);
+    return `<article class="card">
+      <h3>${esc(cropName(r.crop_name, r.crop_name_en))}</h3>
+      ${alt?`<p class="alt">${esc(alt)}</p>`:'<div style="height:8px"></div>'}
+      <div class="row"><span class="price">${num(r.price)} <span class="unit">MYR / ${esc(term(r.unit))}</span></span>
+        <span class="tag t-${esc(r.price_type)}">${esc(term(r.price_type))}</span></div>
+      <div class="row"><span class="unit">${esc(T.date)}</span><span>${day(r.observation_date)}</span></div>
+      ${r.grade?`<div class="row"><span class="unit">${esc(T.grade)}</span><span>${esc(term(r.grade))}</span></div>`:""}
+      <div class="meta">${esc(r.market_name||T.noMarket)}${r.district?" · "+esc(r.district):""}${r.state?" · "+esc(r.state):""}
+        ${r.sublevel?"<br>"+esc(term(r.sublevel)):""}</div>
+    </article>`;
+  }).join("");
 }
 
 async function run(){
-  statusEl.className="status"; statusEl.textContent="Lade …"; resultsEl.innerHTML="";
+  statusEl.className="status"; statusEl.textContent=T.loading; resultsEl.innerHTML="";
   const f = filters();
   try{
     if(view==="series"){
       const rows = await call("numis_price_series", f);
       renderSeries(rows);
-      const tage = new Set(rows.map(r=>r.observation_date)).size;
-      statusEl.textContent = rows.length
-        ? `${tage} Tag(e) im Verlauf – bei nur einem Tag lohnt die Übersicht mehr.`
-        : "Keine Daten für diese Auswahl.";
+      statusEl.textContent = rows.length ? T.seriesInfo(new Set(rows.map(r=>r.observation_date)).size) : T.none;
     } else if(view==="summary"){
       const rows = await call("numis_price_summary", f);
       renderSummary(rows);
-      statusEl.textContent = rows.length ? rows.length+" Kombination(en) aus Sorte, Preisebene und Einheit"
-                                         : "Keine Daten für diese Auswahl.";
+      statusEl.textContent = rows.length ? T.sumInfo(rows.length) : T.none;
     } else {
       const rows = await call("numis_price_search", {...f, p_limit:200});
       renderRows(rows);
-      statusEl.textContent = rows.length
-        ? rows.length+" Einzelwerte"+(rows.length===200?" (auf 200 begrenzt – Filter enger fassen)":"")
-        : "Keine Daten für diese Auswahl.";
+      statusEl.textContent = rows.length ? T.rowInfo(rows.length, rows.length===200) : T.none;
     }
-  }catch(e){ statusEl.className="status err"; statusEl.textContent="Fehler: "+e.message; }
+  }catch(e){ statusEl.className="status err"; statusEl.textContent = T.err + e.message; }
 }
 
 function setView(v){
@@ -332,56 +428,71 @@ function setView(v){
   run();
 }
 
-/* Markt- und Distriktliste folgen dem gewählten Bundesstaat. */
 function syncMarkets(){
   const st = $("f-state").value;
-  const ms = opts.markets.filter(m => !st || m.state === st);
-  refill($("f-market"), ms.map(m=>({code:m.code, name:m.name + (m.district? " · "+m.district : "")})), true);
-  const ds = [...new Set(ms.map(m=>m.district).filter(Boolean))].sort();
-  refill($("f-district"), ds, true);
+  const ms = opts.markets.filter(m=>!st || m.state===st);
+  refill($("f-market"), ms.map(m=>({code:m.code, name:m.name+(m.district?" · "+m.district:"")})));
+  refill($("f-district"), [...new Set(ms.map(m=>m.district).filter(Boolean))].sort());
+}
+
+function applyLang(){
+  T = I18N[lang];
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el=>{ el.textContent = T[el.dataset.t]; });
+  $("t-title").textContent = T.title;
+  $("f-text").placeholder = T.placeholder;
+  $("foot").innerHTML = T.foot;
+  document.querySelectorAll(".lang button").forEach(b=>
+    b.setAttribute("aria-pressed", String(b.dataset.lang===lang)));
+  // Erste Option jeder Liste ist "Alle/All/Semua".
+  document.querySelectorAll("#filters select").forEach(s=>{ s.options[0].textContent = T.all; });
+
+  if(opts){
+    refill($("f-crop"), opts.crops.map(c=>({code:c.code, name:cropName(c.name, c.name_en)})));
+    refill($("f-category"), opts.categories.map(c=>({code:c.code, name:lang==="ms"?c.name:(c.name_en||c.name)})));
+    refill($("f-level"),    opts.levels.slice().sort(),    true);
+    refill($("f-sublevel"), opts.sublevels.slice().sort(), true);
+    refill($("f-grade"),    opts.grades.slice().sort(),    true);
+    refill($("f-unit"),     opts.units.slice().sort(),     true);
+    refill($("f-status"),   opts.statuses.slice().sort(),  true);
+    $("head-sub").textContent =
+      `${int(opts.total)} ${T.prices} · ${opts.crops.length} ${T.crops} · ` +
+      `${opts.markets.length} ${T.markets} · ${day(opts.date_min)} – ${day(opts.date_max)}`;
+    syncMarkets();
+  }
 }
 
 (async function init(){
+  applyLang();
+  document.querySelectorAll(".lang button").forEach(b=>b.onclick = ()=>{
+    lang = b.dataset.lang; localStorage.setItem("numis-lang", lang);
+    applyLang(); run();
+  });
   try{
     opts = await call("numis_filter_options");
-    refill($("f-crop"), opts.crops.map(c=>({code:c.code, name:c.name})));
-    refill($("f-category"), opts.categories.map(c=>({code:c.code, name:c.name})));
-    refill($("f-level"), opts.levels.slice().sort());
-    refill($("f-sublevel"), opts.sublevels.slice().sort());
-    refill($("f-grade"), opts.grades.slice().sort());
-    refill($("f-unit"), opts.units.slice().sort());
-    refill($("f-status"), opts.statuses.slice().sort());
     refill($("f-state"), opts.states.slice().sort());
-    syncMarkets();
-
-    // Voreinstellung: die letzten 14 Tage MIT Daten - nicht die letzten
-    // 14 Kalendertage, sonst ist die Ansicht nach einer Importpause leer.
-    const max = opts.date_max, min = opts.date_min;
-    const from = new Date(max+"T00:00:00"); from.setDate(from.getDate()-13);
-    const fromISO = from.toISOString().slice(0,10);
-    $("f-to").value = max;
-    $("f-from").value = fromISO < min ? min : fromISO;
+    const max=opts.date_max, min=opts.date_min;
+    const from=new Date(max+"T00:00:00"); from.setDate(from.getDate()-13);
+    const fromISO=from.toISOString().slice(0,10);
+    $("f-to").value=max; $("f-from").value = fromISO<min ? min : fromISO;
     ["f-from","f-to"].forEach(id=>{ $(id).min=min; $(id).max=max; });
-    $("head-sub").textContent =
-      Number(opts.total).toLocaleString("de-DE")+" Preise · "+opts.crops.length+" Sorten · "+
-      opts.markets.length+" Märkte · "+day(min)+" – "+day(max);
+    applyLang();
 
     $("f-state").addEventListener("change", syncMarkets);
     $("btn-go").onclick = run;
-    $("btn-reset").onclick = () => {
+    $("btn-reset").onclick = ()=>{
       $("filters").querySelectorAll("select").forEach(s=>s.value="");
       $("f-text").value="";
-      $("f-to").value=max; $("f-from").value = fromISO < min ? min : fromISO;
+      $("f-to").value=max; $("f-from").value = fromISO<min ? min : fromISO;
       syncMarkets(); run();
     };
     $("f-text").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
     ["tab-series","tab-summary","tab-rows"].forEach(id=>
-      $(id).onclick = () => setView(id.replace("tab-","")));
+      $(id).onclick = ()=>setView(id.replace("tab-","")));
     run();
   }catch(e){
     statusEl.className="status err";
-    statusEl.textContent = "Verbindung fehlgeschlagen: "+e.message+
-      " – Wurde die Seite direkt aus dem Dateisystem geöffnet, bitte über einen lokalen Webserver aufrufen.";
+    statusEl.textContent = T.conn + e.message + T.connHint;
   }
 })();
 </script>
