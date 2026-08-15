@@ -8,78 +8,89 @@
 <style>
   :root{
     --bg:#f6f7f5; --card:#fff; --ink:#16211c; --muted:#5d6b64; --line:#dfe4e0;
-    --accent:#1f6f4a; --accent-soft:#e6f2eb; --warn:#8a4b12; --shadow:0 1px 2px rgba(16,32,24,.06),0 4px 14px rgba(16,32,24,.05);
-    --borong:#1f6f4a; --runcit:#2c5f8a; --ladang:#8a5a1f;
+    --accent:#1f6f4a; --accent-soft:#e6f2eb; --warn:#8a4b12;
+    --shadow:0 1px 2px rgba(16,32,24,.06),0 4px 14px rgba(16,32,24,.05);
+    --c-BORONG:#1f6f4a; --c-RUNCIT:#2c5f8a; --c-LADANG:#a8641c; --c-other:#6b5b95;
+    --grid:#e7ebe8;
   }
   @media (prefers-color-scheme:dark){
     :root{
       --bg:#101513; --card:#182320; --ink:#e8efea; --muted:#9aa8a1; --line:#26332e;
       --accent:#5fc394; --accent-soft:#1a2f26; --warn:#e0a86a; --shadow:none;
-      --borong:#5fc394; --runcit:#7fb2df; --ladang:#d9a45f;
+      --c-BORONG:#5fc394; --c-RUNCIT:#7fb2df; --c-LADANG:#e0a86a; --c-other:#b3a6e0;
+      --grid:#232f2a;
     }
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{
-    background:var(--bg); color:var(--ink);
+  body{background:var(--bg); color:var(--ink); -webkit-text-size-adjust:100%;
     font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-    padding-bottom:env(safe-area-inset-bottom);
-    -webkit-text-size-adjust:100%;
-  }
-  header{
-    padding:18px 16px 14px; background:var(--card); border-bottom:1px solid var(--line);
-    position:sticky; top:0; z-index:10;
-  }
-  h1{margin:0; font-size:19px; letter-spacing:-.01em}
-  .sub{margin:3px 0 0; font-size:13px; color:var(--muted)}
-  main{max-width:960px; margin:0 auto; padding:14px 12px 40px}
+    padding-bottom:calc(24px + env(safe-area-inset-bottom));}
+  header{padding:16px 16px 12px; background:var(--card); border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20}
+  h1{margin:0; font-size:18px; letter-spacing:-.01em}
+  .sub{margin:3px 0 0; font-size:12.5px; color:var(--muted)}
+  main{max-width:1000px; margin:0 auto; padding:12px}
 
-  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:12px; box-shadow:var(--shadow)}
-  .grid{display:grid; gap:10px; grid-template-columns:1fr}
-  @media (min-width:560px){ .grid{grid-template-columns:1fr 1fr} .grid .wide{grid-column:1/-1} }
+  .panel{background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:12px; box-shadow:var(--shadow)}
+  .grid{display:grid; gap:9px; grid-template-columns:1fr}
+  @media (min-width:520px){ .grid{grid-template-columns:1fr 1fr} }
+  @media (min-width:820px){ .grid{grid-template-columns:1fr 1fr 1fr} }
+  .wide{grid-column:1/-1}
 
-  label{display:block; font-size:12px; font-weight:600; color:var(--muted); margin:0 0 4px; text-transform:uppercase; letter-spacing:.04em}
-  select,input[type=date]{
-    width:100%; min-height:46px; padding:10px 12px; font-size:16px; color:var(--ink);
-    background:var(--bg); border:1px solid var(--line); border-radius:10px; appearance:none;
-  }
+  label{display:block; font-size:11.5px; font-weight:700; color:var(--muted);
+    margin:0 0 4px; text-transform:uppercase; letter-spacing:.04em}
+  select,input{width:100%; min-height:46px; padding:10px 12px; font-size:16px;
+    color:var(--ink); background:var(--bg); border:1px solid var(--line);
+    border-radius:10px; appearance:none}
   select:focus,input:focus{outline:2px solid var(--accent); outline-offset:1px}
 
+  .more{margin-top:10px}
+  .more>summary{cursor:pointer; font-size:13.5px; font-weight:600; color:var(--accent);
+    padding:8px 2px; list-style:none}
+  .more>summary::-webkit-details-marker{display:none}
+  .more>summary::before{content:"▸ "; }
+  .more[open]>summary::before{content:"▾ "}
+
+  .btnrow{display:flex; gap:8px; margin-top:10px}
+  .btn{flex:1; min-height:44px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--muted); font-size:14px; font-weight:600; cursor:pointer}
+  .btn.primary{background:var(--accent); border-color:var(--accent); color:#fff}
+
   .tabs{display:flex; gap:6px; margin:14px 0 10px}
-  .tab{
-    flex:1; min-height:44px; border:1px solid var(--line); background:var(--card); color:var(--muted);
-    border-radius:10px; font-size:14px; font-weight:600; cursor:pointer;
-  }
+  .tab{flex:1; min-height:44px; border:1px solid var(--line); background:var(--card);
+    color:var(--muted); border-radius:10px; font-size:14px; font-weight:600; cursor:pointer}
   .tab[aria-selected=true]{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
 
-  .status{padding:14px 4px; font-size:14px; color:var(--muted)}
+  .status{padding:12px 4px; font-size:13.5px; color:var(--muted)}
   .status.err{color:var(--warn)}
 
-  .card{
-    background:var(--card); border:1px solid var(--line); border-radius:12px;
-    padding:12px 13px; margin-bottom:9px; box-shadow:var(--shadow);
-  }
+  .card{background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 13px; margin-bottom:9px; box-shadow:var(--shadow)}
   .card h3{margin:0 0 8px; font-size:15px; line-height:1.3; letter-spacing:-.01em}
   .row{display:flex; justify-content:space-between; align-items:baseline; gap:10px; font-size:13.5px}
-  .row + .row{margin-top:3px}
-  .row dt{color:var(--muted)}
-  .row dd{margin:0; font-variant-numeric:tabular-nums}
+  .row+.row{margin-top:3px}
   .price{font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
-  .unit{font-size:13px; font-weight:500; color:var(--muted)}
-  .meta{margin-top:8px; padding-top:8px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted)}
+  .unit{font-size:12.5px; font-weight:500; color:var(--muted)}
+  .meta{margin-top:8px; padding-top:8px; border-top:1px solid var(--line);
+    font-size:12.5px; color:var(--muted)}
+  .tag{display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px;
+    font-weight:700; letter-spacing:.03em; border:1px solid currentColor}
+  .t-BORONG{color:var(--c-BORONG)} .t-RUNCIT{color:var(--c-RUNCIT)} .t-LADANG{color:var(--c-LADANG)}
 
-  .tag{
-    display:inline-block; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700;
-    letter-spacing:.03em; border:1px solid currentColor;
-  }
-  .t-BORONG{color:var(--borong)} .t-RUNCIT{color:var(--runcit)} .t-LADANG{color:var(--ladang)}
-
-  .spread{display:flex; gap:12px; margin-top:8px}
+  .spread{display:flex; gap:10px; margin-top:8px}
   .spread div{flex:1; background:var(--bg); border-radius:9px; padding:7px 9px; text-align:center}
-  .spread span{display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
+  .spread span{display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
   .spread b{font-size:16px; font-variant-numeric:tabular-nums}
 
-  footer{margin-top:22px; font-size:12px; color:var(--muted); text-align:center; line-height:1.6}
+  .chartwrap{background:var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:12px 8px 8px; box-shadow:var(--shadow); margin-bottom:10px}
+  svg{display:block; width:100%; height:auto; touch-action:pan-y}
+  .legend{display:flex; flex-wrap:wrap; gap:10px; padding:8px 6px 2px; font-size:12.5px}
+  .legend i{display:inline-block; width:12px; height:3px; border-radius:2px; margin-right:5px;
+    vertical-align:middle}
+  footer{margin-top:20px; font-size:11.5px; color:var(--muted); text-align:center; line-height:1.7}
 </style>
 </head>
 <body>
@@ -90,19 +101,40 @@
 </header>
 
 <main>
-  <form class="panel" id="filters" autocomplete="off">
+  <form class="panel" id="filters" autocomplete="off" onsubmit="return false">
     <div class="grid">
       <div><label for="f-from">Von</label><input type="date" id="f-from"></div>
       <div><label for="f-to">Bis</label><input type="date" id="f-to"></div>
-      <div class="wide"><label for="f-crop">Kultur</label><select id="f-crop"><option value="">Alle Kulturen</option></select></div>
       <div><label for="f-level">Preisebene</label><select id="f-level"><option value="">Alle</option></select></div>
+      <div class="wide"><label for="f-crop">Sorte</label><select id="f-crop"><option value="">Alle Sorten</option></select></div>
+      <div><label for="f-category">Warengruppe</label><select id="f-category"><option value="">Alle</option></select></div>
       <div><label for="f-state">Bundesstaat</label><select id="f-state"><option value="">Alle</option></select></div>
+    </div>
+
+    <details class="more">
+      <summary>Weitere Filter</summary>
+      <div class="grid" style="margin-top:8px">
+        <div class="wide"><label for="f-market">Markt / Pasar</label><select id="f-market"><option value="">Alle Märkte</option></select></div>
+        <div><label for="f-district">Distrikt</label><select id="f-district"><option value="">Alle</option></select></div>
+        <div><label for="f-sublevel">Marktart</label><select id="f-sublevel"><option value="">Alle</option></select></div>
+        <div><label for="f-grade">Güteklasse</label><select id="f-grade"><option value="">Alle</option></select></div>
+        <div><label for="f-unit">Einheit</label><select id="f-unit"><option value="">Alle</option></select></div>
+        <div><label for="f-status">Status</label><select id="f-status"><option value="">Alle</option></select></div>
+        <div class="wide"><label for="f-text">Freitext (Sorte, Markt, Distrikt, Bundesstaat, Marktart)</label>
+          <input type="search" id="f-text" placeholder="z. B. TIMUN, PASAR TANI, KOTA BHARU"></div>
+      </div>
+    </details>
+
+    <div class="btnrow">
+      <button type="button" class="btn" id="btn-reset">Zurücksetzen</button>
+      <button type="button" class="btn primary" id="btn-go">Abfragen</button>
     </div>
   </form>
 
   <div class="tabs" role="tablist">
-    <button class="tab" id="tab-summary" role="tab" aria-selected="true" type="button">Übersicht</button>
-    <button class="tab" id="tab-rows" role="tab" aria-selected="false" type="button">Einzelwerte</button>
+    <button class="tab" id="tab-series"  role="tab" type="button" aria-selected="true">Verlauf</button>
+    <button class="tab" id="tab-summary" role="tab" type="button" aria-selected="false">Übersicht</button>
+    <button class="tab" id="tab-rows"    role="tab" type="button" aria-selected="false">Einzelwerte</button>
   </div>
 
   <div class="status" id="status">Bitte warten …</div>
@@ -110,60 +142,142 @@
 
   <footer>
     Quelle: FAMA Agri Market Insight · Preise in MYR<br>
-    Ladang = ab Hof · Borong = Großhandel · Runcit = Einzelhandel
+    LADANG = ab Hof · BORONG = Großhandel · RUNCIT = Einzelhandel
   </footer>
 </main>
 
 <script>
-const URL_BASE = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
+const RPC = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
 const KEY = "sb_publishable_9jDrv-WthtnBd3SY7C3BOQ_fgcEwmOD";
 
 const $ = id => document.getElementById(id);
 const statusEl = $("status"), resultsEl = $("results");
-let view = "summary", options = null, timer = null;
+let view = "series", opts = null;
 
-async function rpc(name, body){
-  const res = await fetch(URL_BASE + name, {
+async function call(name, body){
+  const r = await fetch(RPC + name, {
     method:"POST",
-    headers:{ "apikey":KEY, "Authorization":"Bearer "+KEY, "Content-Type":"application/json" },
+    headers:{apikey:KEY, Authorization:"Bearer "+KEY, "Content-Type":"application/json"},
     body: JSON.stringify(body || {})
   });
-  if(!res.ok) throw new Error("HTTP " + res.status + " – " + (await res.text()).slice(0,200));
-  return res.json();
+  if(!r.ok) throw new Error("HTTP "+r.status+" – "+(await r.text()).slice(0,200));
+  return r.json();
 }
+const num  = v => Number(v).toLocaleString("de-DE",{minimumFractionDigits:2,maximumFractionDigits:2});
+const day  = s => new Date(s+"T00:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"2-digit"});
+const esc  = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const colour = t => ["BORONG","RUNCIT","LADANG"].includes(t) ? `var(--c-${t})` : "var(--c-other)";
 
-const num = v => Number(v).toLocaleString("de-DE",{minimumFractionDigits:2, maximumFractionDigits:2});
-const day = s => new Date(s+"T00:00:00").toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit",year:"numeric"});
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-
-function fill(sel, values, label){
-  values.forEach(v => {
-    const o = document.createElement("option");
-    o.value = typeof v === "string" ? v : v.code;
-    o.textContent = typeof v === "string" ? v : v.name;
-    sel.appendChild(o);
-  });
+function opt(sel, value, text){
+  const o = document.createElement("option");
+  o.value = value; o.textContent = text; sel.appendChild(o);
+}
+function refill(sel, items, keep){
+  const cur = keep ? sel.value : "";
+  sel.length = 1;
+  items.forEach(i => typeof i === "string" ? opt(sel,i,i) : opt(sel,i.code,i.name));
+  if(cur && [...sel.options].some(o=>o.value===cur)) sel.value = cur;
 }
 
 function filters(){
-  return {
-    p_from:  $("f-from").value || null,
-    p_to:    $("f-to").value   || null,
-    p_crop:  $("f-crop").value || null,
-    p_level: $("f-level").value|| null,
-    p_state: $("f-state").value|| null
+  const f = {
+    p_from:$("f-from").value||null, p_to:$("f-to").value||null,
+    p_crop:$("f-crop").value||null, p_category:$("f-category").value||null,
+    p_level:$("f-level").value||null, p_sublevel:$("f-sublevel").value||null,
+    p_state:$("f-state").value||null, p_district:$("f-district").value||null,
+    p_market:$("f-market").value||null, p_grade:$("f-grade").value||null,
+    p_unit:$("f-unit").value||null, p_status:$("f-status").value||null,
+    p_text:$("f-text").value.trim()||null
   };
+  return f;
+}
+
+/* ---------- Verlauf: eine Linie je Preisebene und Einheit ---------- */
+function renderSeries(rows){
+  if(!rows.length){ resultsEl.innerHTML=""; return; }
+
+  const groups = new Map();
+  rows.forEach(r => {
+    const k = r.price_type + " · " + r.unit;
+    if(!groups.has(k)) groups.set(k, {label:k, type:r.price_type, pts:[]});
+    groups.get(k).pts.push(r);
+  });
+  // Nur die belastbarsten Reihen zeichnen, sonst wird es unlesbar.
+  const series = [...groups.values()]
+    .sort((a,b)=>b.pts.reduce((s,p)=>s+Number(p.n),0)-a.pts.reduce((s,p)=>s+Number(p.n),0))
+    .slice(0,5);
+
+  const dates = [...new Set(rows.map(r=>r.observation_date))].sort();
+  const xi = new Map(dates.map((d,i)=>[d,i]));
+  const vals = series.flatMap(s=>s.pts.flatMap(p=>[Number(p.price_min),Number(p.price_max)]));
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if(hi === lo){ hi = lo + 1; lo = Math.max(0, lo - 1); }
+  const pad = (hi-lo)*0.08; lo = Math.max(0, lo-pad); hi = hi+pad;
+
+  const W=760, H=320, L=46, R=12, T=14, B=42;
+  const px = i => L + (dates.length<2 ? (W-L-R)/2 : i*(W-L-R)/(dates.length-1));
+  const py = v => T + (H-T-B) * (1 - (v-lo)/(hi-lo));
+
+  const ticks = 4, gridLines = [], yLabels = [];
+  for(let i=0;i<=ticks;i++){
+    const v = lo + (hi-lo)*i/ticks, y = py(v);
+    gridLines.push(`<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}" stroke="var(--grid)" stroke-width="1"/>`);
+    yLabels.push(`<text x="${L-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${num(v)}</text>`);
+  }
+  const step = Math.max(1, Math.ceil(dates.length/6));
+  const xLabels = dates.map((d,i)=> i%step ? "" :
+    `<text x="${px(i).toFixed(1)}" y="${H-B+18}" text-anchor="middle" font-size="11" fill="var(--muted)">${day(d)}</text>`).join("");
+
+  const paths = series.map(s=>{
+    const pts = s.pts.slice().sort((a,b)=>a.observation_date<b.observation_date?-1:1);
+    const band = pts.map(p=>`${px(xi.get(p.observation_date)).toFixed(1)},${py(Number(p.price_max)).toFixed(1)}`)
+      .concat(pts.slice().reverse().map(p=>`${px(xi.get(p.observation_date)).toFixed(1)},${py(Number(p.price_min)).toFixed(1)}`))
+      .join(" ");
+    const line = pts.map((p,i)=>`${i?"L":"M"}${px(xi.get(p.observation_date)).toFixed(1)} ${py(Number(p.price_avg)).toFixed(1)}`).join(" ");
+    const dots = pts.map(p=>`<circle cx="${px(xi.get(p.observation_date)).toFixed(1)}" cy="${py(Number(p.price_avg)).toFixed(1)}" r="2.6" fill="${colour(s.type)}"/>`).join("");
+    return `<polygon points="${band}" fill="${colour(s.type)}" opacity=".12"/>
+            <path d="${line}" fill="none" stroke="${colour(s.type)}" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+  }).join("");
+
+  const legend = series.map(s=>
+    `<span><i style="background:${colour(s.type)}"></i>${esc(s.label)}</span>`).join("");
+
+  resultsEl.innerHTML = `
+    <div class="chartwrap">
+      <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Preisverlauf">
+        ${gridLines.join("")}${yLabels.join("")}${xLabels}
+        <line x1="${L}" y1="${T}" x2="${L}" y2="${H-B}" stroke="var(--line)"/>
+        <line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="var(--line)"/>
+        ${paths}
+      </svg>
+      <div class="legend">${legend}</div>
+      <div class="legend" style="color:var(--muted)">Linie = Tagesdurchschnitt · Fläche = Spanne Min–Max</div>
+    </div>` +
+    series.map(s=>{
+      const n = s.pts.reduce((a,p)=>a+Number(p.n),0);
+      const first = s.pts[0], last = s.pts[s.pts.length-1];
+      const diff = Number(last.price_avg) - Number(first.price_avg);
+      const pct = Number(first.price_avg) ? (100*diff/Number(first.price_avg)) : 0;
+      return `<article class="card">
+        <h3>${esc(s.label)}</h3>
+        <div class="row"><span class="unit">${n.toLocaleString("de-DE")} Werte · ${s.pts.length} Tage</span>
+          <span class="tag t-${esc(s.type)}">${esc(s.type)}</span></div>
+        <div class="spread">
+          <div><span>Start Ø</span><b>${num(first.price_avg)}</b></div>
+          <div><span>Ende Ø</span><b>${num(last.price_avg)}</b></div>
+          <div><span>Änderung</span><b>${diff>=0?"+":"−"}${num(Math.abs(pct))} %</b></div>
+        </div>
+        <div class="meta">${day(first.observation_date)} – ${day(last.observation_date)}</div>
+      </article>`;
+    }).join("");
 }
 
 function renderSummary(rows){
-  if(!rows.length) return resultsEl.innerHTML = "";
-  resultsEl.innerHTML = rows.map(r => `
+  resultsEl.innerHTML = rows.map(r=>`
     <article class="card">
       <h3>${esc(r.crop_name)}</h3>
-      <div class="row">
-        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type || "–")}</span>
-        <span class="unit">${esc(r.n)} Werte · ${esc(r.unit)}</span>
-      </div>
+      <div class="row"><span class="tag t-${esc(r.price_type)}">${esc(r.price_type||"–")}</span>
+        <span class="unit">${Number(r.n).toLocaleString("de-DE")} Werte · ${esc(r.unit)} · ${r.tage} Tage</span></div>
       <div class="spread">
         <div><span>Min</span><b>${num(r.price_min)}</b></div>
         <div><span>Ø</span><b>${num(r.price_avg)}</b></div>
@@ -174,82 +288,100 @@ function renderSummary(rows){
 }
 
 function renderRows(rows){
-  if(!rows.length) return resultsEl.innerHTML = "";
-  resultsEl.innerHTML = rows.map(r => `
+  resultsEl.innerHTML = rows.map(r=>`
     <article class="card">
       <h3>${esc(r.crop_name)}</h3>
-      <div class="row">
-        <span class="price">${num(r.price)} <span class="unit">MYR / ${esc(r.unit)}</span></span>
-        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type || "–")}</span>
-      </div>
-      <dl class="row"><dt>Datum</dt><dd>${day(r.observation_date)}</dd></dl>
-      ${r.grade ? `<dl class="row"><dt>Güteklasse</dt><dd>${esc(r.grade)}</dd></dl>` : ""}
-      <div class="meta">
-        ${esc(r.market_name || "ohne Markt")}${r.district ? " · " + esc(r.district) : ""}${r.state ? " · " + esc(r.state) : ""}
-        ${r.sublevel ? "<br>" + esc(r.sublevel) : ""}
-      </div>
+      <div class="row"><span class="price">${num(r.price)} <span class="unit">MYR / ${esc(r.unit)}</span></span>
+        <span class="tag t-${esc(r.price_type)}">${esc(r.price_type||"–")}</span></div>
+      <div class="row"><span class="unit">Datum</span><span>${day(r.observation_date)}</span></div>
+      ${r.grade?`<div class="row"><span class="unit">Güteklasse</span><span>${esc(r.grade)}</span></div>`:""}
+      <div class="meta">${esc(r.market_name||"ohne Markt")}${r.district?" · "+esc(r.district):""}${r.state?" · "+esc(r.state):""}
+        ${r.sublevel?"<br>"+esc(r.sublevel):""}</div>
     </article>`).join("");
 }
 
-async function query(){
-  statusEl.className = "status";
-  statusEl.textContent = "Lade …";
-  resultsEl.innerHTML = "";
+async function run(){
+  statusEl.className="status"; statusEl.textContent="Lade …"; resultsEl.innerHTML="";
+  const f = filters();
   try{
-    const f = filters();
-    if(view === "summary"){
-      const rows = await rpc("numis_price_summary", f);
-      renderSummary(rows);
+    if(view==="series"){
+      const rows = await call("numis_price_series", f);
+      renderSeries(rows);
+      const tage = new Set(rows.map(r=>r.observation_date)).size;
       statusEl.textContent = rows.length
-        ? rows.length + " Kombination(en) aus Kultur, Preisebene und Einheit"
+        ? `${tage} Tag(e) im Verlauf – bei nur einem Tag lohnt die Übersicht mehr.`
         : "Keine Daten für diese Auswahl.";
+    } else if(view==="summary"){
+      const rows = await call("numis_price_summary", f);
+      renderSummary(rows);
+      statusEl.textContent = rows.length ? rows.length+" Kombination(en) aus Sorte, Preisebene und Einheit"
+                                         : "Keine Daten für diese Auswahl.";
     } else {
-      const rows = await rpc("numis_price_search", {...f, p_limit:200});
+      const rows = await call("numis_price_search", {...f, p_limit:200});
       renderRows(rows);
       statusEl.textContent = rows.length
-        ? rows.length + " Einzelwerte" + (rows.length === 200 ? " (auf 200 begrenzt – Zeitraum eingrenzen)" : "")
+        ? rows.length+" Einzelwerte"+(rows.length===200?" (auf 200 begrenzt – Filter enger fassen)":"")
         : "Keine Daten für diese Auswahl.";
     }
-  }catch(err){
-    statusEl.className = "status err";
-    statusEl.textContent = "Fehler: " + err.message;
-  }
+  }catch(e){ statusEl.className="status err"; statusEl.textContent="Fehler: "+e.message; }
 }
 
-const debounce = () => { clearTimeout(timer); timer = setTimeout(query, 250); };
-
 function setView(v){
-  view = v;
-  $("tab-summary").setAttribute("aria-selected", v === "summary");
-  $("tab-rows").setAttribute("aria-selected", v === "rows");
-  query();
+  view=v;
+  ["series","summary","rows"].forEach(k=>$("tab-"+k).setAttribute("aria-selected", String(k===v)));
+  run();
+}
+
+/* Markt- und Distriktliste folgen dem gewählten Bundesstaat. */
+function syncMarkets(){
+  const st = $("f-state").value;
+  const ms = opts.markets.filter(m => !st || m.state === st);
+  refill($("f-market"), ms.map(m=>({code:m.code, name:m.name + (m.district? " · "+m.district : "")})), true);
+  const ds = [...new Set(ms.map(m=>m.district).filter(Boolean))].sort();
+  refill($("f-district"), ds, true);
 }
 
 (async function init(){
   try{
-    options = await rpc("numis_filter_options");
-    fill($("f-crop"), options.crops);
-    fill($("f-level"), options.levels);
-    fill($("f-state"), options.states);
-    // Standard: die letzten sieben erfassten Tage, nicht die letzten
-    // sieben Kalendertage - sonst ist die Ansicht nach einer Importpause leer.
-    const max = options.date_max, min = options.date_min;
-    const from = new Date(max + "T00:00:00");
-    from.setDate(from.getDate() - 6);
-    $("f-to").value   = max;
-    $("f-from").value = (from.toISOString().slice(0,10) < min) ? min : from.toISOString().slice(0,10);
-    $("f-from").min = $("f-to").min = min;
-    $("f-from").max = $("f-to").max = max;
+    opts = await call("numis_filter_options");
+    refill($("f-crop"), opts.crops.map(c=>({code:c.code, name:c.name})));
+    refill($("f-category"), opts.categories.map(c=>({code:c.code, name:c.name})));
+    refill($("f-level"), opts.levels.slice().sort());
+    refill($("f-sublevel"), opts.sublevels.slice().sort());
+    refill($("f-grade"), opts.grades.slice().sort());
+    refill($("f-unit"), opts.units.slice().sort());
+    refill($("f-status"), opts.statuses.slice().sort());
+    refill($("f-state"), opts.states.slice().sort());
+    syncMarkets();
+
+    // Voreinstellung: die letzten 14 Tage MIT Daten - nicht die letzten
+    // 14 Kalendertage, sonst ist die Ansicht nach einer Importpause leer.
+    const max = opts.date_max, min = opts.date_min;
+    const from = new Date(max+"T00:00:00"); from.setDate(from.getDate()-13);
+    const fromISO = from.toISOString().slice(0,10);
+    $("f-to").value = max;
+    $("f-from").value = fromISO < min ? min : fromISO;
+    ["f-from","f-to"].forEach(id=>{ $(id).min=min; $(id).max=max; });
     $("head-sub").textContent =
-      Number(options.total).toLocaleString("de-DE") + " Preise · " + day(min) + " – " + day(max);
-    document.querySelectorAll("select,input").forEach(el => el.addEventListener("change", debounce));
-    $("tab-summary").onclick = () => setView("summary");
-    $("tab-rows").onclick    = () => setView("rows");
-    query();
-  }catch(err){
-    statusEl.className = "status err";
-    statusEl.textContent = "Verbindung fehlgeschlagen: " + err.message +
-      " – Falls die Seite direkt aus dem Dateisystem geöffnet wurde, bitte über einen lokalen Webserver aufrufen.";
+      Number(opts.total).toLocaleString("de-DE")+" Preise · "+opts.crops.length+" Sorten · "+
+      opts.markets.length+" Märkte · "+day(min)+" – "+day(max);
+
+    $("f-state").addEventListener("change", syncMarkets);
+    $("btn-go").onclick = run;
+    $("btn-reset").onclick = () => {
+      $("filters").querySelectorAll("select").forEach(s=>s.value="");
+      $("f-text").value="";
+      $("f-to").value=max; $("f-from").value = fromISO < min ? min : fromISO;
+      syncMarkets(); run();
+    };
+    $("f-text").addEventListener("keydown", e=>{ if(e.key==="Enter") run(); });
+    ["tab-series","tab-summary","tab-rows"].forEach(id=>
+      $(id).onclick = () => setView(id.replace("tab-","")));
+    run();
+  }catch(e){
+    statusEl.className="status err";
+    statusEl.textContent = "Verbindung fehlgeschlagen: "+e.message+
+      " – Wurde die Seite direkt aus dem Dateisystem geöffnet, bitte über einen lokalen Webserver aufrufen.";
   }
 })();
 </script>

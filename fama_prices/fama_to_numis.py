@@ -161,7 +161,9 @@ def fetch_fama_day(opener, day: dt.date, timeout: int, page_size: int,
 
 # FAMA speichert Preisebene, Guteklasse und Einheit als Codes ("03", "051",
 # "01"). Die Klartexte stehen in diesen offenen Referenztabellen.
-LOOKUPS = [("level", "reflevel"), ("grade", "refgrade"), ("unit", "refunit")]
+LOOKUPS = [("level", "reflevel"), ("grade", "refgrade"), ("unit", "refunit"),
+           ("category", "refcommoditycategory"), ("group", "refcommoditygroup"),
+           ("type", "refcommoditytype")]
 
 
 def sync_lookups(opener, key: str, args) -> None:
@@ -211,6 +213,10 @@ def main() -> int:
     ap.add_argument("--skip-lookups", action="store_true",
                     help="Referenztabellen nicht erneut abgleichen (spart drei "
                          "Anfragen je Lauf, wenn sie schon aktuell sind)")
+    ap.add_argument("--rebuild-crops", action="store_true",
+                    help="Sortenliste aus den Rohzeilen neu aufbauen. Noetig nach "
+                         "einer Korrektur am Sortenschluessel; haengt die "
+                         "Beobachtungen auf die richtige Sorte um.")
     ap.add_argument("--backfill", action="store_true",
                     help="bereits importierte Zeilen neu aufloesen (Codes -> Klartext); "
                          "nutzt die gespeicherten Rohzeilen, kein erneuter FAMA-Abruf")
@@ -233,6 +239,11 @@ def main() -> int:
 
     if not args.dry_run and not args.skip_lookups:
         sync_lookups(opener, key, args)
+        if args.rebuild_crops:
+            res = rpc(opener, "numis_rebuild_crops", {}, key)
+            print(f"Sorten neu aufgebaut: {res.get('sorten_jetzt')} Sorten, "
+                  f"{res.get('beobachtungen_umgehaengt'):,} Beobachtungen umgehaengt, "
+                  f"{res.get('altlasten_geloescht')} Altlasten entfernt.\n")
         if args.backfill:
             n = rpc(opener, "numis_backfill_fama_codes", {}, key)
             print(f"Nachgerechnet: {n:,} bestehende Beobachtungen neu aufgeloest.\n")

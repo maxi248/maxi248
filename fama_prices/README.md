@@ -285,6 +285,27 @@ Der Loader fragt zuerst `numis_missing_days` und holt **nur** die offenen Tage. 
 erst als erledigt, wenn `finish` gelaufen ist – bricht ein Stapel ab, bleibt der Tag offen
 und wird beim nächsten Lauf vollständig wiederholt. Da alles Upserts sind, ist das gefahrlos.
 
+### Sortenschlüssel: `commodityvarietycd` ist NICHT eindeutig
+
+Der Sortencode läuft **je Warentyp neu bei `001` hoch**. Derselbe Code `001` steht deshalb
+gleichzeitig für `TIMUN HIJAU`, `DAUN SUP`, `AYAM HIDUP` und `IKAN KEMBUNG`. Die Identität
+einer Sorte ist erst die Kombination
+
+```
+commoditycategorycd / commoditygroupcd / commoditytypecd / commodityvarietycd
+```
+
+Beispiel: `02/02/011/001` = TIMUN HIJAU, `02/02/011/006` = TIMUN JEPUN,
+`02/02/011/014` = TIMUN HIJAU (IMPORT).
+
+Der erste Import benutzte nur `commodityvarietycd` und hat dadurch **285 Sorten auf 35
+zusammengeworfen** – die Preise hingen an falschen Namen. Behoben in
+`numis.fama_crop_code`; `numis_rebuild_crops()` baut die Sortenliste aus den gespeicherten
+Rohzeilen neu auf und hängt die Beobachtungen um (`fama_to_numis.py --rebuild-crops`).
+Ergebnis: 276 Sorten über 7 Warenkategorien statt 35.
+
+Die Märkte sind von diesem Muster **nicht** betroffen – `institutioncd` ist eindeutig.
+
 ### Speicherbedarf – gemessen
 
 Am realen Bestand (101.022 Zeilen, 38 Tage) gemessen, nach Verdichtung und `VACUUM FULL`:
