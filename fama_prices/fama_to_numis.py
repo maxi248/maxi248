@@ -45,7 +45,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-NEEDS_CLIENT = 5
+NEEDS_CLIENT = 6
 CLIENT_URL = ("https://raw.githubusercontent.com/maxi248/maxi248/refs/heads/"
               "claude/fama-malaysia-price-data-tu8qfj/fama_prices/fama_ami_client.py")
 

@@ -60,11 +60,21 @@ from typing import Any
 
 # Wird von fama_to_numis.py geprueft. Hochzaehlen, sobald sich etwas an der
 # Signatur von fetch_table() oder am Abrufverhalten aendert.
-CLIENT_VERSION = 5
+CLIENT_VERSION = 6
 
-# Blaetter-Verfahren. 'offset' = &limit=N&offset=M, 'page' = &limit=N&page=P,
-# 'skip'/'start' analog zu offset. Mit dem Unterbefehl 'pagetest' ermitteln.
-PAGE_STYLE = "offset"
+# Am System gemessen (siehe 'pagetest'):
+#   - 'limit' wirkt, 'offset'/'skip'/'start'/'from' werden ignoriert
+#   - 'page' wirkt in Verbindung mit 'limit'
+#   - 'order'/'sort' werden NICHT unterstuetzt (HTTP 500)
+#   - ein voller Tag 'harga' liegt bei ~1.500 Zeilen
+#
+# Ohne Sortierung ist seitenweises Blaettern grundsaetzlich wackelig: die
+# Datenbank darf die Reihenfolge zwischen zwei Abfragen aendern, dann kommen
+# Zeilen doppelt oder gar nicht. Deshalb 'auto': erst EINE Anfrage mit grossem
+# Limit (ein Tag passt bequem hinein), und nur falls die wirklich ausgereizt
+# wird, ersatzweise ueber 'page' blaettern - dann mit Dublettenpruefung.
+PAGE_STYLE = "auto"
+BULK_LIMIT = 20000
 
 
 class IncompleteResult(RuntimeError):
@@ -246,26 +256,46 @@ def fetch_table(op, endpoint: str, token: str | None, timeout: int,
     base = base or API          # erst zur Laufzeit aufloesen, damit API ersetzbar bleibt
     limit = page_size or 1000
     style = page_style or PAGE_STYLE
-    collected: list[dict] = []
-    offset = 0
-    seen_first: set[str] = set()
-    while True:
-        sep = "&" if "?" in endpoint else "?"
-        if style == "page":
-            skip = f"page={offset // limit + 1}"
-        elif style == "none":
-            skip = ""
-        else:                                   # offset | skip | start
-            skip = f"{style}={offset}"
-        url = f"{base}{endpoint}{sep}limit={limit}" + (f"&{skip}" if skip else "")
+    sep = "&" if "?" in endpoint else "?"
+
+    def one(url: str) -> list[dict]:
         res = request(op, url, token=token, timeout=timeout)
         payload = as_json(res)
         if payload is None:
             raise RuntimeError(f"{res.get('status')} {res.get('error') or ''} :: "
                                f"{(res.get('text') or '')[:160]}")
-        batch = rows_of(payload)
+        return rows_of(payload)
+
+    # Bevorzugter Weg: alles in einer Anfrage. Keine Seitengrenzen, damit auch
+    # keine Reihenfolge-Probleme.
+    if style in ("auto", "none"):
+        bulk = max(limit, BULK_LIMIT) if style == "auto" else limit
+        rows = one(f"{base}{endpoint}{sep}limit={bulk}")
+        if len(rows) < bulk:
+            return rows
+        if style == "none":
+            if strict:
+                raise IncompleteResult(
+                    f"Genau {bulk:,} Zeilen zurueck - vermutlich abgeschnitten. "
+                    f"Groesseres --page-size waehlen.")
+            return rows
+        print(f"    !! {bulk:,} Zeilen ausgeschoepft - wechsle auf seitenweises Blaettern. "
+              f"Achtung: der Server kann nicht sortieren, Vollstaendigkeit nicht garantiert.")
+        style = "page"
+
+    collected: list[dict] = []
+    seen_rows: set[str] = set()
+    seen_first: set[str] = set()
+    offset = 0
+    duplicates = 0
+    while True:
+        if style == "page":
+            skip = f"page={offset // limit + 1}"
+        else:                                   # offset | skip | start | from
+            skip = f"{style}={offset}"
+        batch = one(f"{base}{endpoint}{sep}limit={limit}&{skip}")
         if not batch:
-            return collected
+            break
 
         signature = json.dumps(batch[0], sort_keys=True, default=str)[:400]
         if signature in seen_first:
@@ -275,21 +305,28 @@ def fetch_table(op, endpoint: str, token: str | None, timeout: int,
             if strict:
                 raise IncompleteResult(msg)
             print(f"    !! {msg}")
-            return collected
+            break
         seen_first.add(signature)
 
-        collected.extend(batch)
+        # Ohne Sortierung koennen sich Seiten ueberlappen - Dubletten verwerfen.
+        for row in batch:
+            key = json.dumps(row, sort_keys=True, default=str)
+            if key in seen_rows:
+                duplicates += 1
+                continue
+            seen_rows.add(key)
+            collected.append(row)
+
         if not quiet and offset:
             print(f"    +{len(batch)} Zeilen (gesamt {len(collected):,})")
         if len(batch) < limit:
-            return collected
+            break
         offset += limit
-        if style == "none":                     # ohne Blaettern gibt es nur eine Seite
-            if len(batch) == limit and strict:
-                raise IncompleteResult(
-                    f"Genau {limit:,} Zeilen zurueck - vermutlich abgeschnitten. "
-                    f"Hoeheres --page-size waehlen oder Blaettern aktivieren.")
-            return collected
+
+    if duplicates:
+        print(f"    !! {duplicates:,} doppelte Zeilen verworfen (Server sortiert nicht) - "
+              f"es koennen ebenso Zeilen fehlen.")
+    return collected
 
 
 def write_csv(rows: list[dict], path: str) -> None:
@@ -483,24 +520,40 @@ def cmd_pagetest(op, args) -> int:
     first = base_ids[0]
     for op_name in ("gt", "gte", "ge", "lt", "le"):
         st, got = ids(day_filter + f"&filter=priceid,{op_name},'{first}'&limit=5")
-        print(f"  priceid,{op_name:<4} -> {st}  {len(got)} Zeilen  {got[:3]}")
+        verdict = "unterstuetzt" if st == 200 and got else "nicht unterstuetzt"
+        print(f"  priceid,{op_name:<4} -> {st}  {len(got)} Zeilen  {got[:3]}  {verdict}")
 
     print("\n== D. Sortierung\n")
+    sort_ok = False
     for label, suffix in [("order=priceid", "&order=priceid&limit=5"),
                           ("sort=priceid", "&sort=priceid&limit=5"),
                           ("orderby=priceid", "&orderby=priceid&limit=5"),
                           ("order=priceid,desc", "&order=priceid,desc&limit=5")]:
         st, got = ids(day_filter + suffix)
-        same = "wie Referenz" if got[:5] == base_ids[:5] else "andere Reihenfolge  <- WIRKT"
-        print(f"  {label:<22} -> {st}  {got[:3]}  {same}")
+        # Nur eine 200er-Antwort MIT Zeilen zaehlt. Ein 500er ist kein Beleg
+        # fuer eine andere Reihenfolge, sondern schlicht ein Fehler.
+        if st != 200 or not got:
+            verdict = "nicht unterstuetzt"
+        elif got[:5] == base_ids[:5]:
+            verdict = "wirkungslos (gleiche Reihenfolge)"
+        else:
+            verdict = "WIRKT"
+            sort_ok = True
+        print(f"  {label:<22} -> {st}  {got[:3]}  {verdict}")
 
     print("\n== Fazit")
+    print(f"  Groesste vollstaendige Einzelantwort: {max_rows:,} Zeilen.")
+    if not sort_ok:
+        print("  Der Server kann NICHT sortieren. Seitenweises Blaettern ist damit")
+        print("  unzuverlaessig (Zeilen koennen doppelt kommen oder fehlen).")
+        print("  -> Empfehlung: alles in EINER Anfrage mit grossem 'limit' holen")
+        print("     (Verfahren 'auto', so macht es der Loader bereits).")
     if working:
-        print(f"  Blaettern moeglich ueber: {', '.join(working)}")
+        print(f"  Blaettern zur Not moeglich ueber: {', '.join(working)}")
     else:
-        print("  Kein Ueberspringen-Parameter wirkt.")
-        print(f"  Groesste Einzelantwort: {max_rows:,} Zeilen.")
-        print("  Dann ueber Filter zerlegen (Bundesstaat/Preisebene) statt blaettern.")
+        print("  Kein Ueberspringen-Parameter wirkt - Blaettern faellt ganz aus.")
+        print("  Reicht ein grosses 'limit' nicht, ueber Filter zerlegen")
+        print("  (Bundesstaat/Preisebene) statt blaettern.")
     return 0
 
 

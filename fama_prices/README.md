@@ -9,7 +9,7 @@ abrufbar – täglich, auf allen drei Preisebenen (Ladang / Borong / Runcit). De
 die NuMIS-Datenbank läuft automatisiert und holt ausgefallene Tage selbsttätig nach.
 
 ```
-GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=1000&offset=0
+GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=20000
 ```
 
 | Skript | Zweck |
@@ -117,7 +117,7 @@ Am laufenden System gemessen – **`harga` und alle Referenztabellen antworten a
 es wird kein Token benötigt:
 
 ```
-GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=1000&offset=0
+GET https://ami.fama.gov.my/api/gen/harga?filter=pricedate,eq,'2026-08-14'&limit=20000
 ```
 
 `harga` liefert rund 50 Spalten, darunter `price`, `oprice`, `pricedate`, `commoditylevel`,
@@ -130,10 +130,26 @@ Ebenfalls offen: `refcommodity`, `refgrade`, `refunit`, `refcommodityvariety`,
 `harga2h`, `harga2m`, `mv_mon_avg` (`avg`, `bulan`, `tahun`, `negeri`, `commoditylevel`)
 und `smp.laporansegar` (`averageprice`, `samplecount`, `gred`, `kategori`).
 
-**Blättern:** Der Server akzeptiert `?limit=N` und `?offset=M`; `size`, `take`, `top`,
-`per_page`, `page=n,size` werden stillschweigend ignoriert. Ohne `limit` versucht er bei
-großen Tabellen die vollständige Ausgabe und bricht mit **502 Bad Gateway** ab – genau das
-waren die anfänglichen 502er, nicht ein Berechtigungsproblem.
+**Blättern** (mit `pagetest` am System gemessen):
+
+| Parameter | Verhalten |
+|---|---|
+| `limit=N` | wirkt; `limit=2000` lieferte einen vollständigen Tag mit 1.541 Zeilen |
+| `page=P` | wirkt **in Verbindung mit `limit`** |
+| `offset`, `skip`, `start`, `from`, `per_page` | werden stillschweigend ignoriert |
+| `order`, `sort`, `orderby` | **nicht unterstützt** (HTTP 500) |
+| `filter=col,gt,'x'` | wirkt; `gte`, `ge`, `lt`, `le` dagegen HTTP 500 |
+
+Ohne `limit` versucht der Server bei großen Tabellen die vollständige Ausgabe und bricht mit
+**502 Bad Gateway** ab – das waren die anfänglichen 502er, kein Berechtigungsproblem.
+
+**Wichtig:** Weil der Server *nicht sortieren kann*, ist seitenweises Blättern grundsätzlich
+unzuverlässig – die Datenbank darf die Reihenfolge zwischen zwei Abfragen ändern, dann kommen
+Zeilen doppelt oder fallen durch. Der Client holt deshalb im Verfahren **`auto`** einen Tag
+in **einer** Anfrage (`limit=20000`; ein Tag liegt bei ~1.500 Zeilen). Nur falls dieses Limit
+wirklich ausgeschöpft wird, schaltet er auf `page` um, verwirft Dubletten und weist auf die
+mögliche Unvollständigkeit hin. Lässt sich gar nicht blättern, bricht er mit
+`IncompleteResult` ab – lieber ein Fehler als stillschweigend fehlende Preise.
 
 **Zum Login:** Ein Konto, das per *Sign in with Google* angelegt wurde, hat in Keycloak
 kein eigenes Passwort – die Prüfung läuft bei Google. Der Direct Access Grant kann dafür
