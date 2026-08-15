@@ -195,6 +195,11 @@ Alle drei sind `SECURITY DEFINER` und **nur für `service_role` ausführbar**; f
 und `authenticated` wurde `EXECUTE` entzogen. Sie liegen in `public`, weil das Schema
 `numis` nicht über die Data-API exponiert ist.
 
+Die Helfer `numis.fama_crop_code` / `fama_market_code` haben einen fixierten
+`search_path` (Supabase-Linter `function_search_path_mutable`). Dass auf `ingest_runs` und
+`raw_source_records` RLS aktiv ist, ohne dass Policies existieren, ist Absicht: an diese
+Tabellen kommt ausschließlich `service_role`.
+
 Feldzuordnung, Statusabbildung (`Disemak`/`Disahkan` → `VALIDATED`, `Ditolak` → `REJECTED`,
 sonst `RAW`) und Schlüsselbildung (`fama_crop_code`, `fama_market_code`) stecken vollständig
 in den Funktionen – der Client bleibt dumm und ist damit leicht austauschbar.
