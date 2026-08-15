@@ -159,6 +159,32 @@ def fetch_fama_day(opener, day: dt.date, timeout: int, page_size: int,
                        quiet=True, page_style=page_style, strict=True)
 
 
+# FAMA speichert Preisebene, Guteklasse und Einheit als Codes ("03", "051",
+# "01"). Die Klartexte stehen in diesen offenen Referenztabellen.
+LOOKUPS = [("level", "reflevel"), ("grade", "refgrade"), ("unit", "refunit")]
+
+
+def sync_lookups(opener, key: str, args) -> None:
+    """Holt die Code-Tabellen und legt sie in NuMIS ab.
+
+    Muss vor dem Tagesimport laufen, sonst landen wieder Codes statt Namen
+    in price_observations.
+    """
+    print("Referenztabellen abgleichen:")
+    for kind, table in LOOKUPS:
+        try:
+            rows = fetch_table(opener, table, None, args.timeout,
+                               page_size=args.page_size, quiet=True,
+                               page_style=args.page_style, strict=True)
+            n = rpc(opener, "numis_sync_fama_lookup",
+                    {"p_kind": kind, "p_rows": rows}, key)
+            print(f"   {table:<10} {len(rows):>4} Zeilen -> {n} uebernommen")
+        except (RuntimeError, IncompleteResult) as exc:
+            print(f"   {table:<10} FEHLER: {exc}")
+            print("   Ohne diese Tabelle bleiben Codes stehen statt Klartext.")
+    print()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -170,6 +196,9 @@ def main() -> int:
     ap.add_argument("--page-size", type=int, default=1000, help="Zeilen pro FAMA-Anfrage")
     ap.add_argument("--page-style", choices=["auto", "offset", "page", "skip", "start", "none"],
                     help="Blaetter-Verfahren; mit 'fama_ami_client.py pagetest' ermitteln")
+    ap.add_argument("--backfill", action="store_true",
+                    help="bereits importierte Zeilen neu aufloesen (Codes -> Klartext); "
+                         "nutzt die gespeicherten Rohzeilen, kein erneuter FAMA-Abruf")
     ap.add_argument("--dry-run", action="store_true",
                     help="Nur abrufen und zeigen, nichts in die Datenbank schreiben")
     ap.add_argument("--insecure", action="store_true")
@@ -186,6 +215,12 @@ def main() -> int:
 
     print(f"NuMIS: {SUPABASE_URL}")
     print(f"Fenster: {start} bis {end}\n")
+
+    if not args.dry_run:
+        sync_lookups(opener, key, args)
+        if args.backfill:
+            n = rpc(opener, "numis_backfill_fama_codes", {}, key)
+            print(f"Nachgerechnet: {n:,} bestehende Beobachtungen neu aufgeloest.\n")
 
     if args.dry_run:
         days = [start + dt.timedelta(days=i) for i in range((end - start).days + 1)]

@@ -230,6 +230,22 @@ Feldzuordnung, Statusabbildung (`Disemak`/`Disahkan` → `VALIDATED`, `Ditolak` 
 sonst `RAW`) und Schlüsselbildung (`fama_crop_code`, `fama_market_code`) stecken vollständig
 in den Funktionen – der Client bleibt dumm und ist damit leicht austauschbar.
 
+### Code-Auflösung
+
+`harga` speichert Preisebene, Güteklasse und Einheit als **Codes**, nicht als Text:
+`commoditylevel` = `01`/`03`/`04`, `commoditygrade` = `049`–`998`, `commodityunit` =
+`01`/`02`/`07`/… , `sublevel` ebenfalls. Nur `commodityvarietybm` (Sorte), `institutionbm`
+(Markt), `negeri` und `daerah` kommen als Klartext.
+
+Die Klartexte stehen in den offenen Referenztabellen `reflevel`, `refgrade` und `refunit`.
+Der Loader gleicht sie **vor jedem Import** ab und legt sie in `numis.fama_code_lookup`
+(`kind`, `code`, `name_ms`, `name_en`) ab; `numis.fama_label(kind, code)` löst beim Import
+auf. Ist ein Code unbekannt, bleibt der Code stehen, statt verloren zu gehen.
+
+`public.numis_backfill_fama_codes()` rechnet bereits importierte Zeilen nach – **ohne
+erneuten FAMA-Abruf**, allein aus den gespeicherten Rohzeilen. Genau dafür ist
+`raw_source_records` da. Aufruf über `fama_to_numis.py --backfill`.
+
 ### Loader benutzen
 
 ```bash
