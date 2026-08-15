@@ -58,6 +58,10 @@ import urllib.parse
 import urllib.request
 from typing import Any
 
+# Wird von fama_to_numis.py geprueft. Hochzaehlen, sobald sich etwas an der
+# Signatur von fetch_table() oder am Abrufverhalten aendert.
+CLIENT_VERSION = 4
+
 ORIGIN = "https://ami.fama.gov.my"
 API = ORIGIN + "/api/gen/"
 API2 = ORIGIN + "/api2/gen/"

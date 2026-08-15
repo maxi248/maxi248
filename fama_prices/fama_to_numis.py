@@ -45,12 +45,24 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+NEEDS_CLIENT = 4
+CLIENT_URL = ("https://raw.githubusercontent.com/maxi248/maxi248/refs/heads/"
+              "claude/fama-malaysia-price-data-tu8qfj/fama_prices/fama_ami_client.py")
+
 try:
+    import fama_ami_client
     from fama_ami_client import fetch_table, make_opener
 except ImportError:
-    print("fama_ami_client.py fehlt - bitte in denselben Ordner legen.\n"
-          "https://raw.githubusercontent.com/maxi248/maxi248/refs/heads/"
-          "claude/fama-malaysia-price-data-tu8qfj/fama_prices/fama_ami_client.py",
+    print("fama_ami_client.py fehlt - bitte in denselben Ordner legen:\n  " + CLIENT_URL,
+          file=sys.stderr)
+    raise SystemExit(2)
+
+# Aeltere Fassungen holen ohne 'limit' ab und laufen bei 'harga' in einen 502.
+# Lieber hier klar abbrechen als spaeter mit einem TypeError.
+_have = getattr(fama_ami_client, "CLIENT_VERSION", 0)
+if _have < NEEDS_CLIENT:
+    print(f"fama_ami_client.py ist veraltet (Version {_have}, benoetigt {NEEDS_CLIENT}).\n"
+          "Bitte die Datei neu herunterladen und die alte ueberschreiben:\n  " + CLIENT_URL,
           file=sys.stderr)
     raise SystemExit(2)
 
