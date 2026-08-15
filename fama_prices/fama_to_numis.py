@@ -196,6 +196,14 @@ def main() -> int:
     ap.add_argument("--page-size", type=int, default=1000, help="Zeilen pro FAMA-Anfrage")
     ap.add_argument("--page-style", choices=["auto", "offset", "page", "skip", "start", "none"],
                     help="Blaetter-Verfahren; mit 'fama_ami_client.py pagetest' ermitteln")
+    ap.add_argument("--states", nargs="+", metavar="NEGERI",
+                    help="Nur diese Bundesstaaten uebernehmen, z.B. "
+                         "--states KELANTAN TERENGGANU. Gefiltert wird nach dem "
+                         "Abruf: FAMA verknuepft mehrere Filter mit UND, ein ODER "
+                         "ueber Bundesstaaten ginge nur mit einer Anfrage je Staat.")
+    ap.add_argument("--prune-raw", type=int, metavar="TAGE",
+                    help="Rohzeilen aelter als TAGE loeschen. Beobachtungen bleiben, "
+                         "nur die Nachvollziehbarkeit alter Tage entfaellt.")
     ap.add_argument("--delay", type=float, default=0.0, metavar="SEK",
                     help="Pause zwischen zwei Tagen. Bei grossen Nachladungen "
                          "1-3 Sekunden waehlen, damit FAMA nicht mit Anfragen "
@@ -241,6 +249,16 @@ def main() -> int:
             return 0
         print(f"Offen: {len(days)} Tag(e) -> {', '.join(d.isoformat() for d in days)}\n")
 
+    if args.prune_raw and not args.dry_run:
+        while True:
+            res = rpc(opener, "numis_prune_raw",
+                      {"p_keep_days": args.prune_raw, "p_batch": 50000}, key)
+            print(f"Rohzeilen aufgeraeumt (vor {res.get('grenze')}): "
+                  f"{res.get('geloescht'):,} geloescht, {res.get('noch_offen'):,} offen")
+            if not res.get("geloescht"):
+                break
+        print()
+
     total_raw = total_obs = 0
     failed: list[str] = []
 
@@ -275,7 +293,13 @@ def main() -> int:
                     pass
             continue
 
-        print(f"   {len(rows):,} Zeilen von FAMA")
+        if args.states:
+            wanted = {t.strip().upper() for t in args.states}
+            vorher = len(rows)
+            rows = [r for r in rows if str(r.get("negeri") or "").strip().upper() in wanted]
+            print(f"   {vorher:,} Zeilen von FAMA -> {len(rows):,} nach Bundesstaat-Filter")
+        else:
+            print(f"   {len(rows):,} Zeilen von FAMA")
         if args.dry_run:
             if rows:
                 print(f"   Beispiel: {json.dumps(rows[0], ensure_ascii=False)[:300]}")

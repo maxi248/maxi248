@@ -285,6 +285,40 @@ Der Loader fragt zuerst `numis_missing_days` und holt **nur** die offenen Tage. 
 erst als erledigt, wenn `finish` gelaufen ist – bricht ein Stapel ab, bleibt der Tag offen
 und wird beim nächsten Lauf vollständig wiederholt. Da alles Upserts sind, ist das gefahrlos.
 
+### Speicherbedarf – gemessen
+
+Am realen Bestand (101.022 Zeilen, 38 Tage) gemessen, nach Verdichtung und `VACUUM FULL`:
+
+| | Größe | je Beobachtung |
+|---|---|---|
+| `raw_source_records` | 137 MB | 1.421 Bytes |
+| `price_observations` | 37 MB | 384 Bytes |
+| Datenbank gesamt | 185 MB | 1,87 KB |
+
+Landesweit fallen **~2.658 Zeilen pro Tag** an, also **~5 MB pro Tag**. Der Supabase-
+Free-Tarif endet bei **500 MB** – landesweit ist damit weder die volle Historie noch ein
+langer Dauerbetrieb möglich. Hochrechnung (Rohzeilen rollierend 60 Tage):
+
+| Variante | Zeilen/Tag | Beobachtungen | Rohzeilen | Summe |
+|---|---|---|---|---|
+| landesweit, 590 Tage | 2.658 | 574 MB | 216 MB | **791 MB** |
+| landesweit, ab 2026-01-01 | 2.658 | 243 MB | 216 MB | **460 MB** |
+| Kelantan + Terengganu, Pahang, Perak | 899 | 194 MB | 73 MB | **267 MB** |
+| nur Kelantan | 305 | 66 MB | 25 MB | **91 MB** |
+
+Zwei Stellschrauben stehen bereit:
+
+- **Verdichtung:** FAMA liefert 51 Felder je Zeile, im Schnitt 15 davon leer. Leere Felder
+  werden beim Import entfernt (`numis.compact_payload`) – gemessen **26 %** weniger
+  (1.299 → 958 Zeichen). Bestand nachträglich verdichten: `numis_compact_raw(n)`,
+  danach `vacuum full numis.raw_source_records`, sonst bleibt der Platz belegt.
+- **Rohzeilen rollierend löschen:** `fama_to_numis.py --prune-raw 60` entfernt Rohzeilen
+  älter als 60 Tage. Die Beobachtungen bleiben vollständig, nur der Rückweg zur
+  Original-Zeile entfällt – für die Validierung durch Farmer zählen ohnehin aktuelle Tage.
+- **Bundesstaaten begrenzen:** `--states KELANTAN TERENGGANU`. Gefiltert wird nach dem
+  Abruf, weil FAMA mehrere `filter=` mit UND verknüpft; ein ODER über Bundesstaaten
+  bräuchte eine Anfrage je Staat.
+
 ### Historie nachladen
 
 `numis_missing_days` macht das Nachladen beliebig wiederholbar – bricht ein Lauf ab, holt
