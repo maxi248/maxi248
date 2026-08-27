@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1f6f4a">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>NuMIS · FAMA Prices</title>
+<style>
+  :root{
+    --bg:#f5f7f4; --card:#fff; --ink:#14201a; --muted:#5f6d65;
+    --line:#dde3de; --accent:#1f6f4a; --soft:#e7f2ec;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0f1412; --card:#182320; --ink:#e8efea; --muted:#9aa8a1;
+           --line:#26332e; --accent:#4fbf8b; --soft:#16241d; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); min-height:100dvh;
+       font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       padding:28px 18px calc(28px + env(safe-area-inset-bottom));
+       display:flex; flex-direction:column; align-items:center}
+  main{width:100%; max-width:460px}
+  .mark{width:52px; height:52px; border-radius:13px; display:block; margin-bottom:16px}
+  h1{font-size:21px; margin:0 0 4px; letter-spacing:-.01em}
+  p.sub{margin:0 0 26px; color:var(--muted); font-size:14px}
+  a.karte{display:block; text-decoration:none; color:inherit; background:var(--card);
+          border:1px solid var(--line); border-radius:14px; padding:16px 18px; margin-bottom:12px}
+  a.karte:hover{border-color:var(--accent)}
+  a.karte b{display:block; font-size:17px; margin-bottom:3px}
+  a.karte span{display:block; color:var(--muted); font-size:13.5px}
+  a.karte .ms{color:var(--accent); font-size:13.5px; margin-top:5px; display:block}
+  .fuss{margin-top:22px; padding-top:16px; border-top:1px solid var(--line);
+        color:var(--muted); font-size:12.5px}
+  .fuss a{color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <img class="mark" src="/icon-192.png" alt="">
+  <h1>NuMIS · FAMA market prices</h1>
+  <p class="sub">Daily farm, wholesale and retail prices for Malaysia, collected from the
+     FAMA AMI portal. Read-only test release.</p>
+
+  <a class="karte" href="/tani">
+    <b>Harga untuk petani</b>
+    <span>Prices for farmers — one crop, your state, price trend over time.</span>
+    <span class="ms">Buka aplikasi · Install to your phone</span>
+  </a>
+
+  <a class="karte" href="/preise">
+    <b>Full price query</b>
+    <span>All fields searchable: crop, market, state, district, level, grade, unit, period.</span>
+    <span class="ms">Open the query page</span>
+  </a>
+
+  <div class="fuss">
+    Source: FAMA Agriculture Market Information (ami.fama.gov.my).
+    Prices are indicative and not an offer.<br>
+    Trouble loading? <a href="/diagnose">Run the diagnostic</a>.
+  </div>
+</main>
+</body>
+</html>

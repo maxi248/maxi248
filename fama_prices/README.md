@@ -195,7 +195,7 @@ bedeutungslos, da sie offen sind.
   credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
   aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
 
-## Farmer-App (`numis_farmer.html`)
+## Farmer-App (`web/tani.html`)
 
 Erste Stufe der PWA für Farmer in Kelantan: **nur Lesen, ohne Anmeldung**, Bahasa Melayu
 als Standardsprache, mobil ausgelegt, offlinefähig.
@@ -258,7 +258,7 @@ beendet die Sperre – sie entzieht beiden gemeinsam die Wirkung.
 
 ### Abfrage-Oberfläche: Sprachen
 
-`numis_preisabfrage.html` schaltet oben rechts zwischen **DE / EN / BM** um (gemerkt in
+`web/preise.html` schaltet oben rechts zwischen **DE / EN / BM** um (gemerkt in
 `localStorage`). Übersetzt werden:
 
 - **Bedienoberfläche** – vollständig, je Sprache eine Textliste in der Datei.
@@ -437,7 +437,7 @@ sind. Bei ~590 Tagen dauert der Lauf mit 2 Sekunden Pause gut 30 Minuten.
 
 ### Abfrage-Oberfläche
 
-`numis_preisabfrage.html` ist eine eigenständige Seite (keine externen Abhängigkeiten,
+`web/preise.html` ist eine eigenständige Seite (keine externen Abhängigkeiten,
 mobil optimiert) für Zeitraum-, Kultur-, Ebenen- und Bundesstaat-Filter mit Übersicht
 (Min/Ø/Max je Kultur) und Einzelwerten.
 
@@ -506,6 +506,48 @@ schtasks /create /tn "NuMIS FAMA Import" /tr "C:\Users\carst\Downloads\run_fama_
 Mac/Linux: `30 7 * * * cd /pfad/zu/fama_prices && NUMIS_SERVICE_KEY=… python3 fama_to_numis.py --days 7 >> fama_import.log 2>&1`
 
 Einmal täglich genügt – FAMA aktualisiert die Tagespreise nicht häufiger.
+
+### Die Seiten ausliefern (`web/`)
+
+Alle HTML-Seiten liegen in `web/` – das ist zugleich das Wurzelverzeichnis für das
+Hosting. Vom Dateisystem (`file://`) aus funktionieren sie zwar, aber nur eingeschränkt:
+kein Zugriff vom Handy, keine Installation als App, und der Browser meldet Einschränkungen
+beim lokalen Speicher.
+
+| Datei | Adresse | Zweck |
+|---|---|---|
+| `index.html` | `/` | Einstieg mit den beiden Seiten |
+| `tani.html` | `/tani` | Farmer-App (BM/EN/DE), installierbar |
+| `preise.html` | `/preise` | Volle Abfrage-Oberfläche für die Auswertung |
+| `diagnose.html` | `/diagnose` | Vierstufiger Selbsttest bei Ladeproblemen |
+| `manifest.webmanifest`, `sw.js`, `icon-*.png` | – | macht `/tani` installierbar und offline-startfähig |
+| `vercel.json` | – | kurze Adressen ohne `.html`, Cache-Regeln |
+
+Die früheren Namen `numis_preisabfrage.html`, `numis_farmer.html` und
+`numis_diagnose.html` sind nach `web/` umgezogen und heißen jetzt `preise.html`,
+`tani.html` und `diagnose.html`. Es gibt bewusst nur **eine** Fassung jeder Seite – zwei
+Kopien in zwei Ordnern laufen sonst auseinander.
+
+**Lokal ansehen** (auch vom Handy im selben WLAN, IP per `ipconfig`):
+
+```bash
+cd web && python3 -m http.server 8000     # dann http://<IP-des-PC>:8000/tani.html
+```
+
+**Dauerhaft ausliefern** über Vercel: Projekt aus dem Repo importieren und
+*Root Directory* auf `fama_prices/web` setzen. Ein Build-Schritt ist nicht nötig, es sind
+statische Dateien.
+
+#### Warum der Service Worker keine Preisdaten zwischenspeichert
+
+`sw.js` legt nur die Hülle in den Cache – HTML, Symbole, Manifest – und lässt jede
+Anfrage an Supabase unangetastet durchlaufen. Das ist Absicht: `numis.assert_client()`
+prüft den Freigabe-Token bei **jedem** Datenabruf serverseitig. Würde der Service Worker
+diese Antworten zwischenspeichern, könnte eine gesperrte Fassung weiterlaufen. So bleibt
+die Sperre wirksam, sobald das Gerät wieder Netz hat.
+
+Die zuletzt gesehenen Preise legt die Farmer-Seite selbst im `localStorage` ab; ohne Netz
+zeigt sie diese mit dem Hinweis „Luar talian" an.
 
 ### Skripte im Überblick
 

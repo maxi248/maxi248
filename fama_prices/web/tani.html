@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#1f6f4a">
+<link rel="icon" href="/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Harga">
 <title>Harga Agromakanan</title>
 <style>
   :root{
@@ -397,6 +403,15 @@ function spracheAnwenden(){
   $("district").addEventListener("change", laden);
   laden();
 })();
+</script>
+<script>
+// Nur ueber https und nur fuer die Huelle. Preisdaten laufen nie durch den
+// Service Worker - die Freigabepruefung soll bei jedem Abruf den Server erreichen.
+if ("serviceWorker" in navigator && window.isSecureContext) {
+  addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").catch(function () {});
+  });
+}
 </script>
 </body>
 </html>
