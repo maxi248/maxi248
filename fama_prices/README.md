@@ -195,6 +195,34 @@ bedeutungslos, da sie offen sind.
   credentials"), **nicht** mit `unauthorized_client`. Der Direct Access Grant ist also
   aktiv – scheitert es, liegt es an Benutzername/Passwort, nicht am Zugangsweg.
 
+## Farmer-App (`numis_farmer.html`)
+
+Erste Stufe der PWA für Farmer in Kelantan: **nur Lesen, ohne Anmeldung**, Bahasa Melayu
+als Standardsprache, mobil ausgelegt, offlinefähig.
+
+Der Bildschirm beantwortet eine Frage: *Was ist meine Ware heute wert, und wo bleibt die
+Spanne?* Drei Karten – LADANG, BORONG, RUNCIT – mit Tagespreis, Spanne, Anzahl Messwerte
+und Veränderung gegenüber der Vorwoche, darunter der Abstand Hof→Laden im Klartext und ein
+Verlauf über 7, 14 oder 30 Tage.
+
+Zwei bewusste Entscheidungen:
+
+- **Steigende Preise sind grün.** Für Verbraucherpreise wäre es umgekehrt – hier lesen
+  Verkäufer mit, für die ein steigender Ab-Hof-Preis eine gute Nachricht ist.
+- **Eigene, schlanke Abfragen.** `numis_farmer_options` liefert 25 KB statt 84 KB (nur
+  Kulturen mit Daten der letzten 60 Tage, keine 470 Märkte), `numis_farmer_overview`
+  liefert einen kompletten Bildschirm in **einem** Aufruf mit rund 1,9 KB. Im Mobilfunknetz
+  in Kelantan zählt jedes Kilobyte.
+
+Offline hält `localStorage` die zuletzt geladenen Listen und die zuletzt gesehene Auswahl
+vor; die Seite zeigt sie sofort und frischt im Hintergrund auf. Fällt das Netz aus,
+wechselt das Abzeichen auf *Luar talian* und die zwischengespeicherten Preise bleiben
+sichtbar.
+
+Echte PWA-Installation (Startbildschirm-Symbol, Service Worker) setzt Hosting über HTTPS
+voraus – aus dem Dateisystem heraus erlauben Browser keinen Service Worker. Die Datei
+funktioniert auch so vollständig, nur eben ohne Installationssymbol.
+
 ### Zugangssteuerung der ausgegebenen Seite
 
 Jede ausgegebene HTML-Fassung trägt ein **Freigabe-Token**. Alle Lesefunktionen prüfen es

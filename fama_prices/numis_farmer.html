@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1f6f4a">
+<title>Harga Agromakanan</title>
+<style>
+  :root{
+    --bg:#f5f7f4; --card:#fff; --ink:#14201a; --muted:#5f6d65; --line:#dde3de;
+    --accent:#1f6f4a; --soft:#e7f2ec; --up:#a5341a; --down:#1f6f4a;
+    --shadow:0 1px 2px rgba(16,32,24,.06),0 6px 18px rgba(16,32,24,.06);
+    --LADANG:#a8641c; --BORONG:#1f6f4a; --RUNCIT:#2c5f8a; --grid:#e6ebe7;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#0f1412; --card:#18221e; --ink:#e9efea; --muted:#9aa8a0; --line:#26322c;
+      --accent:#5fc394; --soft:#172b23; --up:#e08a6a; --down:#5fc394; --shadow:none;
+      --LADANG:#e0a86a; --BORONG:#5fc394; --RUNCIT:#7fb2df; --grid:#222e28; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg); color:var(--ink); -webkit-text-size-adjust:100%;
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+  header{position:sticky; top:0; z-index:20; background:var(--card);
+    border-bottom:1px solid var(--line); padding:12px 14px;
+    display:flex; align-items:center; gap:10px}
+  h1{margin:0; font-size:17px; flex:1; letter-spacing:-.01em}
+  .lang{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden}
+  .lang button{min-width:40px; min-height:36px; border:0; background:var(--card);
+    color:var(--muted); font-size:12px; font-weight:700; cursor:pointer}
+  .lang button+button{border-left:1px solid var(--line)}
+  .lang button[aria-pressed=true]{background:var(--accent); color:#fff}
+  main{max-width:640px; margin:0 auto; padding:12px}
+
+  .pick{background:var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:12px; box-shadow:var(--shadow); margin-bottom:12px}
+  label{display:block; font-size:11.5px; font-weight:700; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.04em; margin:0 0 5px}
+  select,input{width:100%; min-height:52px; padding:12px 14px; font-size:17px; color:var(--ink);
+    background:var(--bg); border:1px solid var(--line); border-radius:11px; appearance:none}
+  select:focus,input:focus{outline:2px solid var(--accent); outline-offset:1px}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-top:9px}
+  .field+.field,.two+.field{margin-top:9px}
+
+  .day{display:flex; justify-content:space-between; align-items:baseline;
+    padding:2px 4px 10px; font-size:13px; color:var(--muted)}
+  .badge{display:inline-block; padding:3px 9px; border-radius:999px; font-size:11.5px;
+    font-weight:700; background:var(--soft); color:var(--accent)}
+  .badge.off{background:#f6e5cf; color:#8a4b12}
+  @media (prefers-color-scheme:dark){ .badge.off{background:#33261a; color:#e0a86a} }
+
+  .lvl{background:var(--card); border:1px solid var(--line); border-left:5px solid var(--c);
+    border-radius:13px; padding:13px 14px; margin-bottom:10px; box-shadow:var(--shadow)}
+  .lvl .top{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+  .lvl .nm{font-size:13px; font-weight:800; letter-spacing:.05em; color:var(--c)}
+  .lvl .pr{font-size:31px; font-weight:800; letter-spacing:-.03em; font-variant-numeric:tabular-nums}
+  .lvl .un{font-size:13px; font-weight:600; color:var(--muted)}
+  .lvl .bot{display:flex; justify-content:space-between; margin-top:7px;
+    font-size:12.5px; color:var(--muted)}
+  .chg{font-weight:800; font-variant-numeric:tabular-nums}
+  .chg.p{color:var(--up)} .chg.m{color:var(--down)}
+
+  .gap{background:var(--soft); border-radius:12px; padding:11px 13px; margin-bottom:12px;
+    font-size:13.5px; line-height:1.45}
+  .gap b{font-variant-numeric:tabular-nums}
+
+  .chart{background:var(--card); border:1px solid var(--line); border-radius:13px;
+    padding:12px 8px 6px; box-shadow:var(--shadow); margin-bottom:12px}
+  svg{display:block; width:100%; height:auto}
+  .leg{display:flex; flex-wrap:wrap; gap:12px; padding:8px 6px 2px; font-size:12.5px}
+  .leg i{display:inline-block; width:13px; height:3px; border-radius:2px; margin-right:5px;
+    vertical-align:middle}
+  .days{display:flex; gap:7px; margin-bottom:12px}
+  .days button{flex:1; min-height:42px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--muted); font-size:14px; font-weight:700; cursor:pointer}
+  .days button[aria-pressed=true]{background:var(--soft); color:var(--accent); border-color:var(--accent)}
+
+  .msg{padding:16px 6px; font-size:14px; color:var(--muted); text-align:center}
+  .msg.err{color:var(--up)}
+  footer{margin-top:16px; text-align:center; font-size:11.5px; color:var(--muted); line-height:1.7}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="t-title">Harga Agromakanan</h1>
+  <div class="lang" role="group">
+    <button type="button" data-lang="ms" aria-pressed="true">BM</button>
+    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    <button type="button" data-lang="de" aria-pressed="false">DE</button>
+  </div>
+</header>
+
+<main>
+  <div class="pick">
+    <div class="field">
+      <label for="q" data-t="search"></label>
+      <input type="search" id="q" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="crop" data-t="crop"></label>
+      <select id="crop"></select>
+    </div>
+    <div class="two">
+      <div><label for="state" data-t="state"></label><select id="state"></select></div>
+      <div><label for="district" data-t="district"></label><select id="district"></select></div>
+    </div>
+  </div>
+
+  <div class="day">
+    <span id="asof"></span>
+    <span id="net" class="badge"></span>
+  </div>
+
+  <div id="out"></div>
+
+  <div class="days" id="daysel">
+    <button type="button" data-d="7">7</button>
+    <button type="button" data-d="14" aria-pressed="true">14</button>
+    <button type="button" data-d="30">30</button>
+  </div>
+
+  <footer id="foot"></footer>
+</main>
+
+<script>
+const RPC   = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
+const KEY   = "sb_publishable_9jDrv-WthtnBd3SY7C3BOQ_fgcEwmOD";
+const TOKEN = "numis-2026-08-r1-8f3ac21d";
+const VERSION = "2026.08.r1";
+
+const I18N = {
+  ms:{ loc:"ms-MY", title:"Harga Agromakanan",
+    search:"Cari komoditi", crop:"Komoditi", state:"Negeri", district:"Daerah",
+    all:"Semua", allD:"Semua daerah", loading:"Memuatkan …", offline:"Luar talian",
+    live:"Terkini", asof:"Data pada",
+    LADANG:"LADANG", BORONG:"BORONG", RUNCIT:"RUNCIT",
+    hLADANG:"Harga di ladang", hBORONG:"Harga borong", hRUNCIT:"Harga runcit",
+    range:"Julat", obs:"bacaan", week:"berbanding minggu lalu",
+    none:"Tiada data untuk pilihan ini. Cuba negeri lain atau komoditi lain.",
+    gap:(a,b)=>`Beza ladang ke runcit: <b>RM ${a}</b> sekilogram — runcit <b>${b}×</b> harga ladang.`,
+    chart:"Purata harian", days:"hari",
+    err:"Sambungan gagal. Data yang dipaparkan mungkin lama.",
+    foot:"Sumber: FAMA Agri Market Insight · harga dalam RM (MYR)" },
+  en:{ loc:"en-GB", title:"Agrifood Prices",
+    search:"Search commodity", crop:"Commodity", state:"State", district:"District",
+    all:"All", allD:"All districts", loading:"Loading …", offline:"Offline",
+    live:"Live", asof:"Data as of",
+    LADANG:"FARM", BORONG:"WHOLESALE", RUNCIT:"RETAIL",
+    hLADANG:"Farm-gate price", hBORONG:"Wholesale price", hRUNCIT:"Retail price",
+    range:"Range", obs:"readings", week:"vs last week",
+    none:"No data for this selection. Try another state or commodity.",
+    gap:(a,b)=>`Farm to retail gap: <b>RM ${a}</b> per kilogram — retail is <b>${b}×</b> the farm price.`,
+    chart:"Daily average", days:"days",
+    err:"Connection failed. The data shown may be outdated.",
+    foot:"Source: FAMA Agri Market Insight · prices in RM (MYR)" },
+  de:{ loc:"de-DE", title:"Agrarpreise",
+    search:"Sorte suchen", crop:"Sorte", state:"Bundesstaat", district:"Distrikt",
+    all:"Alle", allD:"Alle Distrikte", loading:"Lade …", offline:"Offline",
+    live:"Aktuell", asof:"Daten vom",
+    LADANG:"AB HOF", BORONG:"GROSSHANDEL", RUNCIT:"EINZELHANDEL",
+    hLADANG:"Preis ab Hof", hBORONG:"Großhandelspreis", hRUNCIT:"Einzelhandelspreis",
+    range:"Spanne", obs:"Werte", week:"gegenüber Vorwoche",
+    none:"Keine Daten für diese Auswahl. Anderen Bundesstaat oder andere Sorte wählen.",
+    gap:(a,b)=>`Abstand Hof zu Laden: <b>RM ${a}</b> je Kilogramm — der Laden nimmt das <b>${b}-fache</b> des Hofpreises.`,
+    chart:"Tagesdurchschnitt", days:"Tage",
+    err:"Verbindung fehlgeschlagen. Die gezeigten Daten können veraltet sein.",
+    foot:"Quelle: FAMA Agri Market Insight · Preise in RM (MYR)" }
+};
+
+const $ = id => document.getElementById(id);
+let lang = "ms", T = I18N.ms, opts = null, tage = 14, aktuell = null;
+try{ lang = localStorage.getItem("numis-farmer-lang") || "ms"; T = I18N[lang] || I18N.ms; }catch(e){}
+
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem("numis-f-"+k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem("numis-f-"+k, JSON.stringify(v)); }catch(e){} }
+};
+const esc = s => String(s ?? "").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const n2  = v => Number(v).toLocaleString(T.loc,{minimumFractionDigits:2,maximumFractionDigits:2});
+const pct = v => Number(v).toLocaleString(T.loc,{maximumFractionDigits:1});
+const tag = s => new Date(s+"T00:00:00").toLocaleDateString(T.loc,{day:"2-digit",month:"short"});
+const tagL= s => new Date(s+"T00:00:00").toLocaleDateString(T.loc,{day:"2-digit",month:"2-digit",year:"numeric"});
+
+async function call(name, body){
+  const r = await fetch(RPC+name, {
+    method:"POST",
+    headers:{apikey:KEY, Authorization:"Bearer "+KEY, "Content-Type":"application/json"},
+    body: JSON.stringify(Object.assign({p_token:TOKEN}, body||{}))
+  });
+  if(!r.ok) throw new Error("HTTP "+r.status+" – "+(await r.text()).slice(0,160));
+  return r.json();
+}
+
+function netz(ok){
+  const b = $("net");
+  b.textContent = ok ? T.live : T.offline;
+  b.className = "badge" + (ok ? "" : " off");
+}
+
+/* ---------- Auswahllisten ---------- */
+function fuelleKulturen(filter){
+  const sel = $("crop"), cur = sel.value;
+  const f = (filter||"").trim().toLowerCase();
+  const liste = opts.crops.filter(c =>
+    !f || c.m.toLowerCase().includes(f) || (c.e||"").toLowerCase().includes(f));
+  sel.innerHTML = "";
+  liste.forEach(c => {
+    const o = document.createElement("option");
+    o.value = c.c; o.textContent = (lang === "ms" || !c.e) ? c.m : c.e;
+    sel.appendChild(o);
+  });
+  if(cur && liste.some(c => c.c === cur)) sel.value = cur;
+  else if(!sel.value && liste.length) sel.value = liste[0].c;
+}
+function fuelleDistrikte(){
+  const st = $("state").value, sel = $("district");
+  const d = (opts.districts && opts.districts[st]) || [];
+  sel.innerHTML = "";
+  const o0 = document.createElement("option"); o0.value = ""; o0.textContent = T.allD;
+  sel.appendChild(o0);
+  d.slice().sort().forEach(x => {
+    const o = document.createElement("option"); o.value = x; o.textContent = x; sel.appendChild(o);
+  });
+  sel.disabled = !st;
+}
+function fuelleStaaten(){
+  const sel = $("state"), cur = sel.value;
+  sel.innerHTML = "";
+  const o0 = document.createElement("option"); o0.value = ""; o0.textContent = T.all;
+  sel.appendChild(o0);
+  opts.states.slice().sort().forEach(s => {
+    const o = document.createElement("option"); o.value = s; o.textContent = s; sel.appendChild(o);
+  });
+  // Kelantan ist der Zielort der ersten Nutzer.
+  sel.value = cur || (opts.states.includes("KELANTAN") ? "KELANTAN" : "");
+}
+
+/* ---------- Darstellung ---------- */
+function zeichne(d){
+  aktuell = d;
+  const out = $("out");
+  $("asof").textContent = d && d.as_of ? T.asof + " " + tagL(d.as_of) : "";
+  if(!d || !d.levels || !d.levels.length){ out.innerHTML = `<div class="msg">${esc(T.none)}</div>`; return; }
+
+  const karten = d.levels.map(l => {
+    const c = "var(--"+l.level+")";
+    const ch = l.change_pct;
+    const pfeil = ch == null ? "" : (ch > 0 ? "▲" : ch < 0 ? "▼" : "•");
+    const klasse = ch == null ? "" : (ch > 0 ? "chg m" : "chg p");
+    return `<article class="lvl" style="--c:${c}">
+      <div class="top">
+        <span class="nm">${esc(T[l.level] || l.level)}</span>
+        ${ch==null?"":`<span class="${klasse}">${pfeil} ${pct(Math.abs(ch))} %</span>`}
+      </div>
+      <div class="top" style="margin-top:2px">
+        <span class="pr">${n2(l.avg)} <span class="un">RM / ${esc(einheit(l.unit))}</span></span>
+      </div>
+      <div class="bot">
+        <span>${esc(T.range)} ${n2(l.min)} – ${n2(l.max)}</span>
+        <span>${l.n} ${esc(T.obs)}${ch==null?"":" · "+esc(T.week)}</span>
+      </div>
+    </article>`;
+  }).join("");
+
+  const ladang = d.levels.find(l => l.level === "LADANG");
+  const runcit = d.levels.find(l => l.level === "RUNCIT");
+  let abstand = "";
+  if(ladang && runcit && Number(ladang.avg) > 0 && ladang.unit === runcit.unit){
+    abstand = `<div class="gap">${T.gap(
+      n2(Number(runcit.avg) - Number(ladang.avg)),
+      n2(Number(runcit.avg) / Number(ladang.avg)))}</div>`;
+  }
+  out.innerHTML = karten + abstand + diagramm(d.series || []);
+}
+
+const DE_EINHEIT = {KILOGRAM:"Kilogramm", BIJI:"Stück", IKAT:"Bund", TANGKAI:"Stiel",
+                    TONGKOL:"Kolben", KOTAK:"Karton", PEKET:"Packung", KEPING:"Stück"};
+function einheit(u){
+  if(lang === "de") return DE_EINHEIT[u] || u;              // sonst stuende hier "KILOGRAM(S)"
+  if(lang === "ms") return u;
+  return (opts && opts.units_en && opts.units_en[u]) || u;
+}
+
+function diagramm(serie){
+  if(serie.length < 2) return "";
+  const reihen = {};
+  serie.forEach(p => { (reihen[p.l] = reihen[p.l] || []).push(p); });
+  const tageL = [...new Set(serie.map(p => p.d))].sort();
+  const xi = new Map(tageL.map((d,i) => [d,i]));
+  const werte = serie.map(p => Number(p.a));
+  let lo = Math.min(...werte), hi = Math.max(...werte);
+  if(hi === lo){ hi = lo + 1; lo = Math.max(0, lo - 1); }
+  const pad = (hi-lo)*0.12; lo = Math.max(0, lo-pad); hi += pad;
+
+  const W=680,H=250,L=44,R=10,TT=12,B=34;
+  const px = i => L + (tageL.length<2 ? (W-L-R)/2 : i*(W-L-R)/(tageL.length-1));
+  const py = v => TT + (H-TT-B)*(1-(v-lo)/(hi-lo));
+
+  let netzL="", ylab="";
+  for(let i=0;i<=3;i++){
+    const v = lo+(hi-lo)*i/3, y = py(v);
+    netzL += `<line x1="${L}" y1="${y.toFixed(1)}" x2="${W-R}" y2="${y.toFixed(1)}" stroke="var(--grid)"/>`;
+    ylab  += `<text x="${L-6}" y="${(y+4).toFixed(1)}" text-anchor="end" font-size="12" fill="var(--muted)">${n2(v)}</text>`;
+  }
+  const schritt = Math.max(1, Math.ceil(tageL.length/5));
+  const xlab = tageL.map((d,i)=> i%schritt ? "" :
+    `<text x="${px(i).toFixed(1)}" y="${H-B+18}" text-anchor="middle" font-size="12" fill="var(--muted)">${tag(d)}</text>`).join("");
+
+  const linien = Object.keys(reihen).map(k=>{
+    const p = reihen[k].slice().sort((a,b)=> a.d < b.d ? -1 : 1);
+    const dd = p.map((x,i)=>`${i?"L":"M"}${px(xi.get(x.d)).toFixed(1)} ${py(Number(x.a)).toFixed(1)}`).join(" ");
+    return `<path d="${dd}" fill="none" stroke="var(--${k})" stroke-width="2.6"
+             stroke-linejoin="round" stroke-linecap="round"/>` +
+           p.map(x=>`<circle cx="${px(xi.get(x.d)).toFixed(1)}" cy="${py(Number(x.a)).toFixed(1)}" r="2.8" fill="var(--${k})"/>`).join("");
+  }).join("");
+
+  const legende = Object.keys(reihen).map(k =>
+    `<span><i style="background:var(--${k})"></i>${esc(T[k]||k)}</span>`).join("");
+
+  return `<div class="chart">
+    <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(T.chart)}">
+      ${netzL}${ylab}${xlab}
+      <line x1="${L}" y1="${TT}" x2="${L}" y2="${H-B}" stroke="var(--line)"/>
+      <line x1="${L}" y1="${H-B}" x2="${W-R}" y2="${H-B}" stroke="var(--line)"/>
+      ${linien}
+    </svg>
+    <div class="leg">${legende}</div>
+    <div class="leg" style="color:var(--muted)">${esc(T.chart)} · ${tageL.length} ${esc(T.days)}</div>
+  </div>`;
+}
+
+/* ---------- Ablauf ---------- */
+async function laden(){
+  const crop = $("crop").value;
+  if(!crop) return;
+  const schluessel = [crop, $("state").value, $("district").value, tage].join("|");
+  const zwischen = store.get("d:"+schluessel);
+  if(zwischen) zeichne(zwischen);            // sofort zeigen, dann auffrischen
+  else $("out").innerHTML = `<div class="msg">${esc(T.loading)}</div>`;
+
+  try{
+    const d = await call("numis_farmer_overview", {
+      p_crop: crop, p_state: $("state").value || null,
+      p_district: $("district").value || null, p_days: tage });
+    store.set("d:"+schluessel, d);
+    netz(true); zeichne(d);
+  }catch(e){
+    netz(false);
+    if(!zwischen) $("out").innerHTML = `<div class="msg err">${esc(T.err)}<br>${esc(e.message)}</div>`;
+  }
+}
+
+function spracheAnwenden(){
+  T = I18N[lang]; document.documentElement.lang = lang;
+  document.querySelectorAll("[data-t]").forEach(el => el.textContent = T[el.dataset.t]);
+  $("t-title").textContent = T.title;
+  $("q").placeholder = T.search;
+  $("foot").innerHTML = esc(T.foot) + "<br>" + VERSION;
+  document.querySelectorAll(".lang button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
+  if(opts){ fuelleKulturen($("q").value); fuelleStaaten(); fuelleDistrikte(); }
+  if(aktuell) zeichne(aktuell);
+}
+
+(async function start(){
+  spracheAnwenden();
+  document.querySelectorAll(".lang button").forEach(b => b.onclick = () => {
+    lang = b.dataset.lang;
+    try{ localStorage.setItem("numis-farmer-lang", lang); }catch(e){}
+    spracheAnwenden();
+  });
+  $("daysel").querySelectorAll("button").forEach(b => b.onclick = () => {
+    tage = Number(b.dataset.d);
+    $("daysel").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    laden();
+  });
+
+  const zwischen = store.get("opts");
+  if(zwischen){ opts = zwischen; spracheAnwenden(); netz(false); }
+  try{
+    opts = await call("numis_farmer_options");
+    store.set("opts", opts); netz(true); spracheAnwenden();
+  }catch(e){
+    netz(false);
+    if(!zwischen){
+      $("out").innerHTML = `<div class="msg err">${esc(T.err)}<br>${esc(e.message)}</div>`;
+      return;
+    }
+  }
+  $("q").addEventListener("input", () => { fuelleKulturen($("q").value); laden(); });
+  $("crop").addEventListener("change", laden);
+  $("state").addEventListener("change", () => { fuelleDistrikte(); laden(); });
+  $("district").addEventListener("change", laden);
+  laden();
+})();
+</script>
+</body>
+</html>
