@@ -319,7 +319,7 @@ Status `EMPTY` löst das.
 | Funktion | Zweck |
 |---|---|
 | `public.numis_ingest_fama_batch(date, jsonb)` | Legt fehlende `crops`/`markets` an, sichert Rohzeilen, schreibt Beobachtungen – alles per Upsert |
-| `public.numis_ingest_fama_finish(date, int, int, text)` | Schließt den Tag ab (`OK` / `EMPTY` / `ERROR`) |
+| `public.numis_ingest_fama_finish(date, int, int, text)` | Schließt den Tag ab (`OK` / `EMPTY` / `ERROR`) und schreibt `numis.filter_keys` fort |
 | `public.numis_missing_days(from, to)` | Liefert die noch offenen Tage – steuert das Nachladen |
 
 Alle drei sind `SECURITY DEFINER` und **nur für `service_role` ausführbar**; für `anon`
@@ -445,6 +445,55 @@ Sie liest über drei gekapselte Funktionen, die für `anon` freigegeben sind:
 `numis_filter_options()`, `numis_price_search(...)` und `numis_price_summary(...)`.
 Geprüft: `anon` kann darüber **nur lesen** – Import, Nachrechnen und der Direktzugriff auf
 `numis.price_observations` sind gesperrt. Der Schreibweg bleibt allein beim `service_role`.
+
+#### Antwortzeiten – das 3-Sekunden-Limit von `anon`
+
+Die Rolle `anon` hat in Supabase ein `statement_timeout` von **3 Sekunden**
+(`authenticated`: 8 s). Wird es überschritten, bricht PostgREST mit
+`HTTP 500 / 57014 – canceling statement due to statement timeout` ab; im Browser
+erscheint das als *„Connection failed"*.
+
+Genau das ist passiert: `numis_filter_options()` prüfte für **jede** der 4.115 Kulturen
+und **jeden** der 479 Märkte einzeln per `EXISTS`, ob es dazu Beobachtungen gibt, und
+zählte sieben Felder per `DISTINCT` über alle 283.404 Beobachtungen aus. Gemessen:
+**10.288 ms** – im Normalbetrieb knapp unter dem Limit, unter Last darüber.
+
+Der Umbau auf „ein Durchlauf statt vieler Unterabfragen" half nicht (die sieben
+`DISTINCT`-Sortierungen allein kosten 6.210 ms). Die Auswahlwerte ändern sich aber nur,
+wenn neue Daten kommen. Also werden sie nicht mehr bei jedem Seitenaufruf berechnet,
+sondern stehen in einem kleinen Wörterbuch:
+
+| Objekt | Zweck |
+|---|---|
+| `numis.filter_keys(kind, val)` | 783 Zeilen: die tatsächlich belegten Werte je Feld (`crop`, `market`, `level`, `sublevel`, `grade`, `unit`, `status`) |
+| `numis.touch_filter_keys(from, to)` | Schreibt das Wörterbuch für einen Datumsbereich fort – `INSERT … ON CONFLICT DO NOTHING`, **24 ms je Importtag** |
+| `numis.rebuild_filter_keys()` | Vollaufbau über den gesamten Bestand; nur für die Wartung |
+
+`numis_ingest_fama_finish()` ruft `touch_filter_keys()` für den gerade importierten Tag
+auf – das Wörterbuch pflegt sich also von selbst. Am Loader ändert sich nichts.
+
+**Nach größeren Löschungen** (z. B. wenn ganze Monate aus `price_observations`
+entfernt werden) kann das Wörterbuch Werte enthalten, zu denen es keine Daten mehr gibt.
+Dann einmal von Hand nachziehen:
+
+```sql
+select numis.rebuild_filter_keys();
+```
+
+Gemessen als `anon`, nach dem Umbau:
+
+| Funktion | vorher | nachher |
+|---|---:|---:|
+| `numis_filter_options` | 10.288 ms | **111 ms** |
+| `numis_price_series` (14 Tage) | 436 ms | 436 ms |
+| `numis_price_summary` (14 Tage) | 166 ms | 166 ms |
+| `numis_price_search` (200 Zeilen) | 20 ms | 20 ms |
+| `numis_farmer_options` | 280 ms | 280 ms |
+| `numis_farmer_overview` (14 Tage) | 94 ms | 94 ms |
+
+Inhaltlich liefert die Funktion exakt dasselbe wie vorher: 277 Kulturen, 479 Märkte,
+3 Preisebenen, 10 Marktarten, 7 Güteklassen, 5 Einheiten, 2 Statuswerte,
+16 Bundesstaaten, 7 Warengruppen.
 
 ### Täglich laufen lassen
 
