@@ -258,14 +258,15 @@ beendet die Sperre – sie entzieht beiden gemeinsam die Wirkung.
 
 ### Abfrage-Oberfläche: Sprachen
 
-`web/preise.html` schaltet oben rechts zwischen **DE / EN / BM** um (gemerkt in
-`localStorage`). Übersetzt werden:
+Die ausgelieferten Seiten sind **Englisch und Bahasa Melayu** – sonst nichts. Deutsch war
+für die Entwicklung praktisch, gehört aber nicht auf eine Seite, die an malaysische Tester
+geht: `web/preise.html` startet auf Englisch, `web/tani.html` auf Bahasa, umgeschaltet wird
+oben rechts (gemerkt in `localStorage`). Übersetzt werden:
 
-- **Bedienoberfläche** – vollständig, je Sprache eine Textliste in der Datei.
+- **Bedienoberfläche** – vollständig, je Sprache eine Textliste in der Datei. Das schließt
+  Fehlermeldungen ein, auch die der globalen Fehlerbehandlung.
 - **Fachbegriffe aus den Daten** (Preisebene, Güteklasse, Einheit, Marktart) – Englisch
-  kommt aus FAMAs eigenen Referenztabellen (`name_en` in `numis.fama_code_lookup`),
-  Deutsch aus einer festen Liste in der HTML-Datei, da es sich um einen kleinen,
-  geschlossenen Satz handelt.
+  kommt aus FAMAs eigenen Referenztabellen (`name_en` in `numis.fama_code_lookup`).
 - **Sortennamen** – Malaiisch aus den Preisdaten, Englisch aus `refcommodityvariety`
   (`numis_sync_fama_varieties`). Weicht der englische Name ab, steht der malaiische
   klein darunter – am Markt zählt der malaiische Name.
@@ -274,8 +275,16 @@ Unbrauchbare Übersetzungen werden verworfen: FAMA gibt als englische Entsprechu
 `PREMIUM` nur `P` an; eine Ein-Buchstaben-Übersetzung ist schlechter als das Original,
 deshalb bleibt dort der malaiische Begriff stehen.
 
-Markt-, Distrikt- und Bundesstaatsnamen bleiben in allen Sprachen im Original – sie sind
+Markt-, Distrikt- und Bundesstaatsnamen bleiben in beiden Sprachen im Original – sie sind
 Eigennamen.
+
+Wer die Seite früher benutzt hat, kann `"de"` in `localStorage` stehen haben. Beide Seiten
+übernehmen deshalb nur noch Sprachen, die es wirklich gibt – sonst stünde `T` auf
+`undefined` und die Seite bliebe leer.
+
+Beim Sprachwechsel wird alles neu geschrieben, was schon auf dem Bildschirm steht: die
+Farmer-Seite merkt sich dafür Netzzustand und letzten Fehler, sonst blieben Offline-Abzeichen
+und Fehlermeldung in der vorherigen Sprache stehen.
 
 ### Zugriff: `fama_ami_client.py`
 

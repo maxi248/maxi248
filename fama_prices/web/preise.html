@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -112,9 +112,8 @@
     <h1 id="t-title">NuMIS · FAMA</h1>
     <p class="sub" id="head-sub">…</p>
   </div>
-  <div class="lang" role="group" aria-label="Sprache">
-    <button type="button" data-lang="de" aria-pressed="true">DE</button>
-    <button type="button" data-lang="en" aria-pressed="false">EN</button>
+  <div class="lang" role="group" aria-label="Language">
+    <button type="button" data-lang="en" aria-pressed="true">EN</button>
     <button type="button" data-lang="ms" aria-pressed="false">BM</button>
   </div>
 </header>
@@ -171,26 +170,7 @@ const VERSION = "2026.08.r1";
 const TOKEN   = "numis-2026-08-r1-8f3ac21d";
 
 const I18N = {
-  de:{ loadingLists:"Auswahllisten werden geladen – einen Moment bitte …", emptyOptions:"Die Auswahllisten kamen leer zurück. Antwort der Datenbank:", unknownTitle:"Fassung nicht freigeschaltet", oldFileHint:"Häufigste Ursache: Es läuft noch eine ältere Datei. Neue Fassung speichern und die Seite mit Strg+F5 neu laden.", blockedTitle:"Zugriff gesperrt", blockedDefault:"Diese Fassung der Seite ist nicht mehr freigeschaltet.", unknownDefault:"Diese Fassung ist nicht freigeschaltet.", blockedHint:"Bitte fordere die aktuelle Fassung an.", version:"Fassung", locale:"de-DE", title:"NuMIS · FAMA Preisabfrage",
-    from:"Von", to:"Bis", level:"Preisebene", crop:"Sorte", category:"Warengruppe",
-    state:"Bundesstaat", more:"Weitere Filter", market:"Markt / Pasar", district:"Distrikt",
-    sublevel:"Marktart", grade:"Güteklasse", unit:"Einheit", status:"Status",
-    freetext:"Freitext (Sorte, Markt, Distrikt, Bundesstaat, Marktart)",
-    placeholder:"z. B. TIMUN, PASAR TANI, KOTA BHARU",
-    all:"Alle", reset:"Zurücksetzen", go:"Abfragen",
-    tabSeries:"Verlauf", tabSummary:"Übersicht", tabRows:"Einzelwerte",
-    loading:"Lade …", none:"Keine Daten für diese Auswahl.",
-    min:"Min", avg:"Ø", max:"Max", start:"Start Ø", end:"Ende Ø", change:"Änderung",
-    values:"Werte", days:"Tage", date:"Datum", noMarket:"ohne Markt",
-    prices:"Preise", crops:"Sorten", markets:"Märkte",
-    chartHint:"Linie = Tagesdurchschnitt · Fläche = Spanne Min–Max",
-    seriesInfo:d=>`${d} Tag(e) im Verlauf – bei nur einem Tag lohnt die Übersicht mehr.`,
-    sumInfo:n=>`${n} Kombination(en) aus Sorte, Preisebene und Einheit`,
-    rowInfo:(n,c)=>`${n} Einzelwerte${c?" (auf 200 begrenzt – Filter enger fassen)":""}`,
-    foot:"Quelle: FAMA Agri Market Insight · Preise in MYR<br>LADANG = ab Hof · BORONG = Großhandel · RUNCIT = Einzelhandel",
-    err:"Fehler: ", conn:"Verbindung fehlgeschlagen: ",
-    connHint:" – Wurde die Seite direkt aus dem Dateisystem geöffnet, bitte über einen lokalen Webserver aufrufen." },
-  en:{ loadingLists:"Loading filter lists – one moment please …", emptyOptions:"The filter lists came back empty. Database response:", unknownTitle:"Version not enabled", oldFileHint:"Most likely cause: an older file is still in use. Save the new version and reload with Ctrl+F5.", blockedTitle:"Access blocked", blockedDefault:"This version of the page is no longer enabled.", unknownDefault:"This version is not enabled.", blockedHint:"Please request the current version.", version:"Version", locale:"en-GB", title:"NuMIS · FAMA Price Query",
+  en:{ loadingLists:"Loading filter lists – one moment please …", emptyOptions:"The filter lists came back empty. Database response:", unknownTitle:"Version not enabled", oldFileHint:"Most likely cause: an outdated copy of the page is still cached. Reload with Ctrl+F5.", blockedTitle:"Access blocked", blockedDefault:"This version of the page is no longer enabled.", unknownDefault:"This version is not enabled.", blockedHint:"Please request the current version.", version:"Version", locale:"en-GB", title:"NuMIS · FAMA Price Query",
     from:"From", to:"To", level:"Price level", crop:"Commodity", category:"Category",
     state:"State", more:"More filters", market:"Market / Pasar", district:"District",
     sublevel:"Market type", grade:"Grade", unit:"Unit", status:"Status",
@@ -208,8 +188,9 @@ const I18N = {
     rowInfo:(n,c)=>`${n} records${c?" (capped at 200 – narrow the filters)":""}`,
     foot:"Source: FAMA Agri Market Insight · prices in MYR<br>LADANG = farm gate · BORONG = wholesale · RUNCIT = retail",
     err:"Error: ", conn:"Connection failed: ",
-    connHint:" – If the page was opened directly from the file system, please serve it over a local web server." },
-  ms:{ loadingLists:"Memuatkan senarai penapis – sila tunggu …", emptyOptions:"Senarai penapis kembali kosong. Respons pangkalan data:", unknownTitle:"Versi tidak diaktifkan", oldFileHint:"Punca biasa: fail lama masih digunakan. Simpan versi baharu dan muat semula dengan Ctrl+F5.", blockedTitle:"Akses disekat", blockedDefault:"Versi halaman ini tidak lagi diaktifkan.", unknownDefault:"Versi ini tidak diaktifkan.", blockedHint:"Sila minta versi terkini.", version:"Versi", locale:"ms-MY", title:"NuMIS · Harga FAMA",
+    connHint:" – Please check your internet connection and reload the page.",
+    jsErr:"Script error: ", unErr:"Unexpected error: ", line:"line" },
+  ms:{ loadingLists:"Memuatkan senarai penapis – sila tunggu …", emptyOptions:"Senarai penapis kembali kosong. Respons pangkalan data:", unknownTitle:"Versi tidak diaktifkan", oldFileHint:"Punca biasa: salinan halaman yang lama masih tersimpan. Muat semula dengan Ctrl+F5.", blockedTitle:"Akses disekat", blockedDefault:"Versi halaman ini tidak lagi diaktifkan.", unknownDefault:"Versi ini tidak diaktifkan.", blockedHint:"Sila minta versi terkini.", version:"Versi", locale:"ms-MY", title:"NuMIS · Harga FAMA",
     from:"Dari", to:"Hingga", level:"Peringkat harga", crop:"Komoditi", category:"Kategori",
     state:"Negeri", more:"Penapis lanjutan", market:"Pasar", district:"Daerah",
     sublevel:"Jenis pasar", grade:"Gred", unit:"Unit", status:"Status",
@@ -227,32 +208,20 @@ const I18N = {
     rowInfo:(n,c)=>`${n} rekod${c?" (dihadkan kepada 200 – tapis dengan lebih tepat)":""}`,
     foot:"Sumber: FAMA Agri Market Insight · harga dalam MYR<br>LADANG · BORONG · RUNCIT",
     err:"Ralat: ", conn:"Sambungan gagal: ",
-    connHint:" – Jika halaman dibuka terus dari sistem fail, sila gunakan pelayan web tempatan." }
+    connHint:" – Sila semak sambungan internet anda dan muat semula halaman.",
+    jsErr:"Ralat skrip: ", unErr:"Ralat tidak dijangka: ", line:"baris" }
 };
 
-/* Fachbegriffe aus den Daten. Englisch kommt aus den FAMA-Referenztabellen
-   (opts.en), Deutsch aus dieser festen Liste - die malaiischen Begriffe sind
-   ein geschlossener, kleiner Satz. */
-const DE_TERMS = {
-  LADANG:"Ab Hof", BORONG:"Großhandel", RUNCIT:"Einzelhandel",
-  KILOGRAM:"Kilogramm", BIJI:"Stück", IKAT:"Bund", TANGKAI:"Stiel",
-  TONGKOL:"Kolben", KOTAK:"Karton", PEKET:"Packung",
-  "TIADA GRED":"ohne Klasse", PREMIUM:"Premium",
-  "PASAR TANI":"Bauernmarkt", "KILANG BELIAN":"Aufkaufbetrieb",
-  "PASAR BORONG / PUSAT PEMBORONGAN":"Großmarkt",
-  "RUNCIT - PASAR AWAM / PUSAT PERUNCITAN":"Einzelhandel – öffentlicher Markt",
-  "RUNCIT - MYFARM OUTLET (MFO)":"Einzelhandel – MyFarm-Outlet",
-  "RUNCIT - OUTLET BUAH BERMUSIM":"Einzelhandel – Saisonobst-Outlet",
-  "BORONG - OUTLET BUAH BERMUSIM":"Großhandel – Saisonobst-Outlet",
-  "LADANG - BELIAN PO":"Ab Hof – Aufkauf",
-  VALIDATED:"geprüft", RAW:"ungeprüft", REJECTED:"abgelehnt"
-};
+/* Fachbegriffe aus den Daten: Englisch kommt aus den FAMA-Referenztabellen
+   (opts.en), Malaiisch steht ohnehin schon in den Daten. */
 
+// T ist hier noch nicht gesetzt; faellt ein Fehler frueh an, greift Englisch.
+function txt(k){ try{ return T[k] || I18N.en[k]; }catch(e){ return I18N.en[k]; } }
 window.addEventListener("error", e =>
-  meldung("err", "JavaScript-Fehler: " + (e.message || e.error) +
-                 " (Zeile " + (e.lineno || "?") + ")"));
+  meldung("err", txt("jsErr") + (e.message || e.error) +
+                 " (" + txt("line") + " " + (e.lineno || "?") + ")"));
 window.addEventListener("unhandledrejection", e =>
-  meldung("err", "Unbehandelter Fehler: " + (e.reason && e.reason.message || e.reason)));
+  meldung("err", txt("unErr") + (e.reason && e.reason.message || e.reason)));
 function meldung(art, text){
   const el = document.getElementById("status");
   if(el){ el.className = "status " + (art === "err" ? "err" : ""); el.textContent = text; }
@@ -260,8 +229,9 @@ function meldung(art, text){
 
 const $ = id => document.getElementById(id);
 const statusEl = $("status"), resultsEl = $("results");
-let lang = "de";
-try{ lang = localStorage.getItem("numis-lang") || "de"; }catch(e){}   // kann blockiert sein
+let lang = "en";
+// Ein frueher gespeichertes "de" gibt es nicht mehr - nur bekannte Sprachen uebernehmen.
+try{ const g = localStorage.getItem("numis-lang"); if(I18N[g]) lang = g; }catch(e){}
 let T = I18N[lang], view = "series", opts = null;
 
 async function call(name, body){
@@ -293,7 +263,6 @@ const colour = t => ["BORONG","RUNCIT","LADANG"].includes(t) ? `var(--c-${t})` :
 function term(v){
   if(v == null) return "";
   if(lang === "ms") return v;
-  if(lang === "de") return DE_TERMS[v] || (opts && opts.en && opts.en[v]) || v;
   return (opts && opts.en && opts.en[v]) || v;
 }
 const cropName = (ms, en) => (lang === "ms" || !en) ? ms : en;
@@ -501,9 +470,8 @@ function showBlocked(info){
   // serverseitig: ohne Freigabe liefert die Datenbank nichts.
   try{ localStorage.removeItem("numis-lang"); }catch(e){}
   const blocked = info && info.status === "BLOCKED";
-  // Rueckfall in der Reihenfolge gewaehlte Sprache -> Englisch -> Deutsch:
-  // Englisch versteht im Zweifel jeder Tester, Deutsch nicht.
-  const msg = (info && (info["message_"+lang] || info.message_en || info.message_de))
+  // Rueckfall: gewaehlte Sprache -> Englisch. Englisch versteht jeder Tester.
+  const msg = (info && (info["message_"+lang] || info.message_en))
     || (blocked ? T.blockedDefault : T.unknownDefault);
   const extra = blocked ? "" : T.oldFileHint;
   document.querySelector("main").innerHTML =

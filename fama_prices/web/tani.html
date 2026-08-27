@@ -92,10 +92,9 @@
 
 <header>
   <h1 id="t-title">Harga Agromakanan</h1>
-  <div class="lang" role="group">
+  <div class="lang" role="group" aria-label="Language">
     <button type="button" data-lang="ms" aria-pressed="true">BM</button>
     <button type="button" data-lang="en" aria-pressed="false">EN</button>
-    <button type="button" data-lang="de" aria-pressed="false">DE</button>
   </div>
 </header>
 
@@ -161,24 +160,13 @@ const I18N = {
     gap:(a,b)=>`Farm to retail gap: <b>RM ${a}</b> per kilogram — retail is <b>${b}×</b> the farm price.`,
     chart:"Daily average", days:"days",
     err:"Connection failed. The data shown may be outdated.",
-    foot:"Source: FAMA Agri Market Insight · prices in RM (MYR)" },
-  de:{ loc:"de-DE", title:"Agrarpreise",
-    search:"Sorte suchen", crop:"Sorte", state:"Bundesstaat", district:"Distrikt",
-    all:"Alle", allD:"Alle Distrikte", loading:"Lade …", offline:"Offline",
-    live:"Aktuell", asof:"Daten vom",
-    LADANG:"AB HOF", BORONG:"GROSSHANDEL", RUNCIT:"EINZELHANDEL",
-    hLADANG:"Preis ab Hof", hBORONG:"Großhandelspreis", hRUNCIT:"Einzelhandelspreis",
-    range:"Spanne", obs:"Werte", week:"gegenüber Vorwoche",
-    none:"Keine Daten für diese Auswahl. Anderen Bundesstaat oder andere Sorte wählen.",
-    gap:(a,b)=>`Abstand Hof zu Laden: <b>RM ${a}</b> je Kilogramm — der Laden nimmt das <b>${b}-fache</b> des Hofpreises.`,
-    chart:"Tagesdurchschnitt", days:"Tage",
-    err:"Verbindung fehlgeschlagen. Die gezeigten Daten können veraltet sein.",
-    foot:"Quelle: FAMA Agri Market Insight · Preise in RM (MYR)" }
+    foot:"Source: FAMA Agri Market Insight · prices in RM (MYR)" }
 };
 
 const $ = id => document.getElementById(id);
 let lang = "ms", T = I18N.ms, opts = null, tage = 14, aktuell = null;
-try{ lang = localStorage.getItem("numis-farmer-lang") || "ms"; T = I18N[lang] || I18N.ms; }catch(e){}
+// Nur bekannte Sprachen uebernehmen - frueher konnte hier "de" stehen.
+try{ const g = localStorage.getItem("numis-farmer-lang"); if(I18N[g]){ lang = g; T = I18N[g]; } }catch(e){}
 
 const store = {
   get(k){ try{ return JSON.parse(localStorage.getItem("numis-f-"+k)); }catch(e){ return null; } },
@@ -200,10 +188,18 @@ async function call(name, body){
   return r.json();
 }
 
+let netzOk = null, fehler = null;   // gemerkt, damit ein Sprachwechsel beides neu schreibt
+
 function netz(ok){
+  netzOk = ok;
   const b = $("net");
   b.textContent = ok ? T.live : T.offline;
   b.className = "badge" + (ok ? "" : " off");
+}
+
+function zeigeFehler(e){
+  fehler = e;
+  $("out").innerHTML = `<div class="msg err">${esc(T.err)}<br>${esc(e.message)}</div>`;
 }
 
 /* ---------- Auswahllisten ---------- */
@@ -282,10 +278,7 @@ function zeichne(d){
   out.innerHTML = karten + abstand + diagramm(d.series || []);
 }
 
-const DE_EINHEIT = {KILOGRAM:"Kilogramm", BIJI:"Stück", IKAT:"Bund", TANGKAI:"Stiel",
-                    TONGKOL:"Kolben", KOTAK:"Karton", PEKET:"Packung", KEPING:"Stück"};
 function einheit(u){
-  if(lang === "de") return DE_EINHEIT[u] || u;              // sonst stuende hier "KILOGRAM(S)"
   if(lang === "ms") return u;
   return (opts && opts.units_en && opts.units_en[u]) || u;
 }
@@ -352,10 +345,10 @@ async function laden(){
       p_crop: crop, p_state: $("state").value || null,
       p_district: $("district").value || null, p_days: tage });
     store.set("d:"+schluessel, d);
-    netz(true); zeichne(d);
+    fehler = null; netz(true); zeichne(d);
   }catch(e){
     netz(false);
-    if(!zwischen) $("out").innerHTML = `<div class="msg err">${esc(T.err)}<br>${esc(e.message)}</div>`;
+    if(!zwischen) zeigeFehler(e);
   }
 }
 
@@ -368,7 +361,9 @@ function spracheAnwenden(){
   document.querySelectorAll(".lang button").forEach(b =>
     b.setAttribute("aria-pressed", String(b.dataset.lang === lang)));
   if(opts){ fuelleKulturen($("q").value); fuelleStaaten(); fuelleDistrikte(); }
+  if(netzOk !== null) netz(netzOk);
   if(aktuell) zeichne(aktuell);
+  else if(fehler) zeigeFehler(fehler);
 }
 
 (async function start(){
@@ -392,10 +387,7 @@ function spracheAnwenden(){
     store.set("opts", opts); netz(true); spracheAnwenden();
   }catch(e){
     netz(false);
-    if(!zwischen){
-      $("out").innerHTML = `<div class="msg err">${esc(T.err)}<br>${esc(e.message)}</div>`;
-      return;
-    }
+    if(!zwischen){ zeigeFehler(e); return; }
   }
   $("q").addEventListener("input", () => { fuelleKulturen($("q").value); laden(); });
   $("crop").addEventListener("change", laden);

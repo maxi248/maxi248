@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="/icon-192.png" sizes="192x192">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<title>NuMIS Diagnose</title>
+<title>NuMIS Diagnostics</title>
 <style>
   body{font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
        margin:0; padding:16px; background:#f6f7f5; color:#16211c}
@@ -25,11 +25,11 @@
 </style>
 </head>
 <body>
-<h1>NuMIS · Diagnose</h1>
-<p class="sub">Prüft Schritt für Schritt, was die Datenbank an diesen Browser liefert.</p>
+<h1>NuMIS · Diagnostics</h1>
+<p class="sub">Checks, step by step, what the database delivers to this browser.</p>
 <div id="out"></div>
 <button onclick="navigator.clipboard.writeText(document.getElementById('out').innerText)
-                 .then(()=>alert('Bericht kopiert'))">Bericht kopieren</button>
+                 .then(()=>alert('Report copied'))">Copy report</button>
 
 <script>
 const RPC   = "https://otumcdmymenwiliwzrhj.supabase.co/rest/v1/rpc/";
@@ -40,7 +40,7 @@ const out = document.getElementById("out");
 function box(titel, ok, zeilen){
   const d = document.createElement("div");
   d.className = "box";
-  d.innerHTML = `<h2>${titel} <span class="${ok?'ok':'bad'}">${ok?'OK':'FEHLER'}</span></h2>` +
+  d.innerHTML = `<h2>${titel} <span class="${ok?'ok':'bad'}">${ok?'OK':'FAILED'}</span></h2>` +
                 zeilen.map(z=>`<div>${z}</div>`).join("");
   out.appendChild(d);
 }
@@ -68,46 +68,46 @@ async function schritt(name, body){
 
 (async function(){
   // 0. Umgebung
-  let ls = "nutzbar";
+  let ls = "available";
   try{ localStorage.setItem("_t","1"); localStorage.removeItem("_t"); }
-  catch(e){ ls = "BLOCKIERT ("+e.name+")"; }
-  box("0 · Umgebung", ls === "nutzbar", [
-    "Adresse: <b>" + location.protocol + "</b>" +
-      (location.protocol === "file:" ? " – aus dem Dateisystem geöffnet" : ""),
-    "Lokaler Speicher: <b>" + ls + "</b>",
+  catch(e){ ls = "BLOCKED ("+e.name+")"; }
+  box("0 · Environment", ls === "available", [
+    "Address: <b>" + location.protocol + "</b>" +
+      (location.protocol === "file:" ? " – opened from the file system" : ""),
+    "Local storage: <b>" + ls + "</b>",
     "Browser: " + navigator.userAgent.slice(0,110)
   ]);
 
-  // 1. Freigabe
+  // 1. Freigabe dieser Fassung
   const a = await schritt("numis_client_check", {p_token: TOKEN});
-  box("1 · Freigabe der Fassung", a.ok && a.daten && a.daten.status === "ACTIVE", [
-    "HTTP <b>" + a.status + "</b> nach " + a.ms + " ms",
-    a.netz ? "Kein Netzwerkzugriff (CORS oder Verbindung): " + a.txt
-           : "Antwort:" + pre(a.daten ?? a.txt)
+  box("1 · Release status", a.ok && a.daten && a.daten.status === "ACTIVE", [
+    "HTTP <b>" + a.status + "</b> after " + a.ms + " ms",
+    a.netz ? "No network access (CORS or connection): " + a.txt
+           : "Response:" + pre(a.daten ?? a.txt)
   ]);
 
-  // 2. Auswahllisten - hier liegt der gemeldete Fehler
+  // 2. Auswahllisten - der Aufruf, der die Seite beim Start fuellt
   const b = await schritt("numis_filter_options", {p_token: TOKEN});
   const d = b.daten;
-  const zaehl = k => (d && Array.isArray(d[k])) ? d[k].length : "FEHLT";
-  box("2 · Auswahllisten", b.ok && d && zaehl("crops") > 0, [
-    "HTTP <b>" + b.status + "</b> nach " + b.ms + " ms, " + b.txt.length + " Zeichen empfangen",
-    "Typ der Antwort: <b>" + (Array.isArray(d) ? "Array (unerwartet!)" : typeof d) + "</b>",
-    "Sorten: <b>"+zaehl("crops")+"</b> · Märkte: <b>"+zaehl("markets")+
-      "</b> · Preisebenen: <b>"+zaehl("levels")+"</b> · Marktarten: <b>"+zaehl("sublevels")+
-      "</b> · Güteklassen: <b>"+zaehl("grades")+"</b> · Einheiten: <b>"+zaehl("units")+
-      "</b> · Status: <b>"+zaehl("statuses")+"</b> · Bundesstaaten: <b>"+zaehl("states")+
-      "</b> · Warengruppen: <b>"+zaehl("categories")+"</b>",
-    b.ok ? "Erste Sorte:" + pre(d && d.crops && d.crops[0]) : "Fehlertext:" + pre(b.txt)
+  const zaehl = k => (d && Array.isArray(d[k])) ? d[k].length : "MISSING";
+  box("2 · Filter lists", b.ok && d && zaehl("crops") > 0, [
+    "HTTP <b>" + b.status + "</b> after " + b.ms + " ms, " + b.txt.length + " characters received",
+    "Response type: <b>" + (Array.isArray(d) ? "array (unexpected!)" : typeof d) + "</b>",
+    "Commodities: <b>"+zaehl("crops")+"</b> · Markets: <b>"+zaehl("markets")+
+      "</b> · Price levels: <b>"+zaehl("levels")+"</b> · Market types: <b>"+zaehl("sublevels")+
+      "</b> · Grades: <b>"+zaehl("grades")+"</b> · Units: <b>"+zaehl("units")+
+      "</b> · Statuses: <b>"+zaehl("statuses")+"</b> · States: <b>"+zaehl("states")+
+      "</b> · Categories: <b>"+zaehl("categories")+"</b>",
+    b.ok ? "First commodity:" + pre(d && d.crops && d.crops[0]) : "Error text:" + pre(b.txt)
   ]);
 
   // 3. Preisabruf
   const c = await schritt("numis_price_series", {p_token: TOKEN, p_from:"2026-08-01", p_to:"2026-08-15"});
-  box("3 · Preisabruf", c.ok && Array.isArray(c.daten), [
-    "HTTP <b>" + c.status + "</b> nach " + c.ms + " ms",
-    "Zeilen: <b>" + (Array.isArray(c.daten) ? c.daten.length : "keine") + "</b>",
-    c.ok ? "Erste Zeile:" + pre(Array.isArray(c.daten) ? c.daten[0] : null)
-         : "Fehlertext:" + pre(c.txt)
+  box("3 · Price fetch", c.ok && Array.isArray(c.daten), [
+    "HTTP <b>" + c.status + "</b> after " + c.ms + " ms",
+    "Rows: <b>" + (Array.isArray(c.daten) ? c.daten.length : "none") + "</b>",
+    c.ok ? "First row:" + pre(Array.isArray(c.daten) ? c.daten[0] : null)
+         : "Error text:" + pre(c.txt)
   ]);
 })();
 </script>
