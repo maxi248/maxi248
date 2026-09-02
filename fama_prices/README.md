@@ -2,6 +2,14 @@
 
 Recherche-Stand: 15.08.2026
 
+> **Wo was liegt.** Dieses Repo enthält den Loader, die Analysewerkzeuge und diese
+> Dokumentation. Die ausgelieferten Webseiten (`index.html`, `tani.html`, `preise.html`,
+> `diagnose.html` samt Manifest und Service Worker) liegen in einem eigenen Repo
+> `nusatani-prices` und werden von dort über Vercel veröffentlicht. Im Text stehen sie
+> weiterhin unter `web/…`, weil das dort das Wurzelverzeichnis ist.
+>
+> Für den Einstieg einer neuen Sitzung: `UEBERGABE.md`.
+
 ## Kurzfassung
 
 **Ergebnis:** Die FAMA-Preisdaten sind über die AMI-API **ohne Anmeldung** maschinell
